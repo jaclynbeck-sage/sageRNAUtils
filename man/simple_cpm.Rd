@@ -11,7 +11,8 @@ simple_cpm(data)
 are samples. All values in \code{data} should be >= 0.}
 }
 \value{
-a matrix the same shape as data with all counts transformed to CPM
+an object the same type and shape as data with all counts transformed
+to CPM
 }
 \description{
 Transforms count data into counts per million (CPM) by dividing by library

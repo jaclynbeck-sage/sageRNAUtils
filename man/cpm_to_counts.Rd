@@ -17,8 +17,9 @@ sample, but this could also be modified with TMM or other size factors as
 well.}
 }
 \value{
-a matrix the same shape as \code{data} where CPM values have been
-converted back to integer counts. Any non-integer values will be rounded off.
+an object the same type and shape as \code{data} where CPM values have
+been converted back to integer counts. Any non-integer values will be
+rounded off.
 }
 \description{
 Convert CPM Values Back to Counts

@@ -15,8 +15,8 @@ should be >= 0.}
 log2, to avoid taking log2(0). Defaults to 0.5}
 }
 \value{
-a matrix the same shape as data with all counts transformed to
-log2(CPM)
+an object the same type and shape as data with all counts transformed
+to log2(CPM)
 }
 \description{
 Normalizes a counts matrix by transforming to CPM values and taking

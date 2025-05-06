@@ -10,7 +10,8 @@
 #' @param data a matrix or matrix-like object where rows are genes and columns
 #'   are samples. All values in `data` should be >= 0.
 #'
-#' @return a matrix the same shape as data with all counts transformed to CPM
+#' @return an object the same type and shape as data with all counts transformed
+#'   to CPM
 #' @export
 #'
 #' @seealso [simple_lognorm()]
@@ -20,7 +21,11 @@
 #' cpm_data <- simple_cpm(counts)
 #' all(colSums(cpm_data) == 1e6)
 simple_cpm <- function(data) {
-  sweep(as.matrix(data), 2, colSums(data), "/") * 1e6
+  if (inherits(data, "Matrix")) {
+    sweep(data, 2, Matrix::colSums(data), "/") * 1e6
+  } else {
+    sweep(data, 2, colSums(data), "/") * 1e6
+  }
 }
 
 
@@ -35,8 +40,8 @@ simple_cpm <- function(data) {
 #' @param pseudocount a pseudocount to add to every CPM value when taking the
 #'   log2, to avoid taking log2(0). Defaults to 0.5
 #'
-#' @return a matrix the same shape as data with all counts transformed to
-#'   log2(CPM)
+#' @return an object the same type and shape as data with all counts transformed
+#'   to log2(CPM)
 #' @export
 #'
 #' @seealso [simple_cpm()]
@@ -47,7 +52,14 @@ simple_cpm <- function(data) {
 #' counts <- round(matrix(runif(1000, min = 0, max = 1e8), nrow = 100))
 #' log_data <- simple_lognorm(counts, pseudocount = 1)
 simple_lognorm <- function(data, pseudocount = 0.5) {
-  log2(as.matrix(simple_cpm(data)) + pseudocount)
+  if (pseudocount == 1 & inherits(data, "sparseMatrix")) {
+    # Preserves sparsity
+    sparse_data <- simple_cpm(data)
+    sparse_data@x <- log2(sparse_data@x + pseudocount)
+    sparse_data
+  } else {
+    log2(simple_cpm(data) + pseudocount)
+  }
 }
 
 
@@ -60,8 +72,9 @@ simple_lognorm <- function(data, pseudocount = 0.5) {
 #'   well.
 #' @inheritParams simple_cpm
 #'
-#' @return a matrix the same shape as `data` where CPM values have been
-#' converted back to integer counts. Any non-integer values will be rounded off.
+#' @return an object the same type and shape as `data` where CPM values have
+#'   been converted back to integer counts. Any non-integer values will be
+#'   rounded off.
 #' @export
 #'
 #' @seealso [simple_cpm()]
@@ -75,5 +88,5 @@ simple_lognorm <- function(data, pseudocount = 0.5) {
 #' counts2 <- cpm_to_counts(cpm_data, library_size = colSums(counts))
 #' all(counts == counts2)
 cpm_to_counts <- function(data, library_size) {
-  round(sweep(as.matrix(data), 2, library_size, "*") / 1e6)
+  round(sweep(data, 2, library_size, "*") / 1e6)
 }
