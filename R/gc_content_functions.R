@@ -337,6 +337,7 @@ get_gc_content_gtf <- function(gtf_file, fasta_file,
 #'   It will also contain columns listed in the `additional_attributes`
 #'   argument if it is not `NULL`.
 #' @export
+#' @importFrom rlang .data
 #'
 #' @seealso [get_gc_content_biomart], [get_gc_content_gtf]
 calculate_gc_content <- function(ranges_obj,

@@ -12,6 +12,9 @@ Imports:
     BSgenome,
     dplyr,
     GenomicRanges,
+    ggplot2,
+    matrixStats,
+    rlang,
     rtracklayer,
     stringr
 Roxygen: list(markdown = TRUE)
