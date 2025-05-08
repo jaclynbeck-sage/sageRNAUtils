@@ -19,12 +19,11 @@ Transforms count data into counts per million (CPM) by dividing by library
 size and multiplying by 1 million.
 }
 \details{
-This function is named \code{simple_cpm} to avoid confusion with \code{\link[edgeR:cpm]{edgeR::cpm()}},
-which handles pseudocounts differently and has the ability to incorporate
-TMM values into the library size.
+This function is named \code{simple_cpm} to avoid name collision with
+\code{\link[edgeR:cpm]{edgeR::cpm()}}, which has more advanced configuration options.
 }
 \examples{
-counts <- round(matrix(runif(1000, min = 0, max = 1e8), nrow = 100))
+counts <- round(matrix(runif(1000, min = 0, max = 100), ncol = 10))
 cpm_data <- simple_cpm(counts)
 all(colSums(cpm_data) == 1e6)
 }

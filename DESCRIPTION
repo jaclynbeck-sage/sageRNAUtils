@@ -7,19 +7,21 @@ Description: This package contains generic functions that are commonly used acro
 License: Apache License (>= 2)
 Encoding: UTF-8
 Imports:
-    biomaRt,
-    Biostrings,
-    BSgenome,
     dplyr,
-    GenomicRanges,
     ggplot2,
     Matrix,
     matrixStats,
     rlang,
-    rtracklayer,
     stringr
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Suggests:
+    biomaRt,
+    Biostrings,
+    BSgenome,
+    cqn,
+    edgeR,
+    GenomicRanges,
+    rtracklayer,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

@@ -25,7 +25,7 @@ log2(cpm + pseudocount)
 \examples{
 # Example using a pseudocount of 1, which makes all log2 values positive and
 # count values of 0 remain 0.
-counts <- round(matrix(runif(1000, min = 0, max = 1e8), nrow = 100))
+counts <- round(matrix(runif(1000, min = 0, max = 100), ncol = 10))
 log_data <- simple_lognorm(counts, pseudocount = 1)
 }
 \seealso{

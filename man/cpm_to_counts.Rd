@@ -22,11 +22,12 @@ been converted back to integer counts. Any non-integer values will be
 rounded off.
 }
 \description{
-Convert CPM Values Back to Counts
+Multiplies CPM values by library size / 1e6 to obtain the original counts
+values.
 }
 \examples{
 # Make a matrix of CPM data
-counts <- round(matrix(runif(1000, min = 0, max = 1e8), nrow = 100))
+counts <- round(matrix(runif(1000, min = 0, max = 100), ncol = 10))
 cpm_data <- simple_cpm(counts)
 
 # Reverse the operation
