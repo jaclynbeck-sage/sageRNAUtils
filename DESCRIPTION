@@ -12,7 +12,8 @@ Imports:
     Matrix,
     matrixStats,
     rlang,
-    stringr
+    stringr,
+    tidyr
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Suggests:
@@ -21,6 +22,7 @@ Suggests:
     BSgenome,
     cqn,
     edgeR,
+    fastqcr,
     GenomicRanges,
     rtracklayer,
     testthat (>= 3.0.0)
