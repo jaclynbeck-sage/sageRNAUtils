@@ -37,7 +37,7 @@ to fix column typing, naming, and/or missing Percentage columns. The final
 output will be a list of data.frames corresponding to the modules requested
 from \code{\link[fastqcr:qc_read_collection]{fastqcr::qc_read_collection()}} (by default, all modules).
 
-\strong{Note:} This function can take several minutes to over an hour, depending
+\strong{Note:} This function can take anywhere from several seconds to over an hour, depending
 on how many files there are.
 }
 \examples{

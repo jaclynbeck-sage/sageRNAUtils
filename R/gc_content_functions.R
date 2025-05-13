@@ -241,7 +241,7 @@ get_gc_content_gtf <- function(gtf_file, fasta_file,
   # Some renames to match Biomart naming conventions
   gtf$ensembl_gene_id <- gtf$gene_id
   gtf$chromosome_name <- as.character(GenomicRanges::seqnames(gtf))
-  gtf$hgnc_symbol <- gtf$gene_name
+  gtf$external_gene_name <- gtf$gene_name
   gtf$gene_biotype <- gtf$gene_type
 
   if (verbose) {

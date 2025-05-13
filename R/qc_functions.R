@@ -11,7 +11,7 @@
 #' output will be a list of data.frames corresponding to the modules requested
 #' from [fastqcr::qc_read_collection()] (by default, all modules).
 #'
-#' **Note:** This function can take several minutes to over an hour, depending
+#' **Note:** This function can take anywhere from several seconds to over an hour, depending
 #' on how many files there are.
 #'
 #' @param files a character vector of file names (including absolute or relative
