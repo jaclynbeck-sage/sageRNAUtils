@@ -179,6 +179,8 @@ edger_log_cpm_to_counts <- function(data, library_size, prior_count = 2) {
   counts <- exp(sweep(data * log(2), 2, log(adj_lib_size) - log(1e6), "+"))
   counts <- round(sweep(counts, 2, prior, "-"))
 
+  counts[counts < 0] <- 0
+
   return(counts)
 }
 
