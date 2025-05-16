@@ -113,8 +113,7 @@ test_that("simple_lognorm preserves sparsity with pseudocount = 1", {
 
   counts_log <- simple_lognorm(counts, pseudocount = 1)
 
-  expected <- log2(counts / 15 * 1e6 + 1)
-  expected <- as(expected, "CsparseMatrix")
+  expected <- Matrix::Matrix(log2(counts / 15 * 1e6 + 1), sparse = TRUE)
 
   expect_true(inherits(counts_log, "CsparseMatrix"))
   expect_identical(counts_log, expected)
