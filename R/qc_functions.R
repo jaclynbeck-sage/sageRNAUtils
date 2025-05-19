@@ -183,7 +183,7 @@ load_fastqc_output <- function(files, sample_names, ...) {
         ),
         # These values are strings originally
         dplyr::across(
-          c(`Total Sequences`, `Sequences flagged as poor quality`, `%GC`),
+          all_of(c("Total Sequences", "Sequences flagged as poor quality", "%GC")),
           as.numeric
         )
       ) |>
