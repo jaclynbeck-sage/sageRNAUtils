@@ -66,7 +66,6 @@ input, filtering, and plotting.
 }
 \examples{
 \dontrun{
-test
 }
 }
 \seealso{

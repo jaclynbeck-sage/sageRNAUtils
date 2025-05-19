@@ -8,6 +8,7 @@ plot_pca_outliers(
   pca_df,
   pc1_threshold,
   pc2_threshold,
+  print_plot = TRUE,
   color = "is_outlier",
   ...
 )
@@ -23,6 +24,9 @@ output by \code{\link[=prcomp]{prcomp()}}, plus any additional covariates added 
 \item{pc2_threshold}{the outlier threshold for PC2, which is calculated by
 \code{\link[=find_pca_outliers]{find_pca_outliers()}} as \code{n_sds * sd(PC2)}.}
 
+\item{print_plot}{(optional) whether to print the plot out before returning,
+or not. Defaults to TRUE.}
+
 \item{color}{(optional) the name of the column in \code{pca_df} to use as the
 "color" in the \code{\link[ggplot2:aes]{ggplot2::aes()}} specification. If \code{color} is \code{NULL} or is
 not a valid column name, all points will be black instead. Defaults to
@@ -33,8 +37,7 @@ plot, in the format <aes_spec> = "column_name_as_string". For example,
 \code{shape = "diagnosis"} or \code{size = "quantity"}.}
 }
 \value{
-a \link[ggplot2:ggplot]{ggplot2::ggplot} object with the built plot. The plot is also
-printed out.
+a \link[ggplot2:ggplot]{ggplot2::ggplot} object with the built plot.
 }
 \description{
 Plots PC1 vs PC2 and marks outlier samples as found by \code{\link[=find_pca_outliers]{find_pca_outliers()}}.
@@ -42,6 +45,5 @@ It also draws the ellipse that was used to determine outliers.
 }
 \examples{
 \dontrun{
-test
 }
 }

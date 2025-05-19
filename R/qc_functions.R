@@ -183,7 +183,7 @@ load_fastqc_output <- function(files, sample_names, ...) {
         ),
         # These values are strings originally
         dplyr::across(
-          all_of(c("Total Sequences", "Sequences flagged as poor quality", "%GC")),
+          dplyr::all_of(c("Total Sequences", "Sequences flagged as poor quality", "%GC")),
           as.numeric
         )
       ) |>
@@ -257,22 +257,50 @@ load_fastqc_output <- function(files, sample_names, ...) {
 #'
 #' @examples
 #' \dontrun{
-#' test
 #' }
 find_pca_outliers_by_group <- function(data, pca_group,
                                        n_sds = 4,
                                        metadata = NULL,
                                        sample_colname = "specimenID",
                                        gene_info = NULL) {
-  metadata$pca_group <- metadata[, pca_group]
-  pca_valid <- FALSE
+  if (length(pca_group == 1)) {
+    if (is.null(metadata)) {
+      stop("`pca_group` is a single value but no metadata was supplied.")
+    }
+    if (!(pca_group %in% colnames(metadata))) {
+      stop(paste0("\"", pca_group, "\" is not a valid column in `metadata`."))
+    }
+    pca_group <- metadata[, pca_group]
+  }
 
-  results <- lapply(unique(metadata$pca_group), function(grp) {
-    meta_group <- subset(metadata, pca_group == grp)
-    data_group <- data[, meta_group[, sample_colname]]
+  if (length(pca_group) != ncol(data)) {
+    stop("`pca_group` does not match the number of samples in `data`.")
+  }
 
-    find_pca_outliers(meta_group, data_group,
+  if (!is.null(metadata)) {
+    if (!(sample_colname %in% colnames(metadata))) {
+      stop(paste0("\"", sample_colname, "\" is not a valid column in `metadata`."))
+    }
+    if (!all(colnames(data) %in% metadata[, sample_colname])) {
+      stop("`metadata` is missing samples that are present in `data`.")
+    }
+    # Make sure data and metadata are in the same sample order
+    data <- data[, metadata[, sample_colname]]
+  }
+
+  results <- lapply(unique(pca_group), function(grp) {
+    data_group <- data[, pca_group == grp]
+
+    if (is.null(metadata)) {
+      meta_group <- NULL
+    } else {
+      meta_group <- metadata[pca_group == grp, ]
+    }
+
+    # TODO check for small number of samples before running
+    find_pca_outliers(data_group,
                       n_sds = n_sds,
+                      metadata = meta_group,
                       sample_colname = sample_colname,
                       gene_info = gene_info)
   })
@@ -356,13 +384,13 @@ find_pca_outliers_by_group <- function(data, pca_group,
 #'
 #' @examples
 #' \dontrun{
-#' test
 #' }
 find_pca_outliers <- function(data,
                               n_sds = 4,
                               metadata = NULL,
                               sample_colname = "specimenID",
                               gene_info = NULL) {
+
   # If gene biotype information is provided, use protein-coding autosomal genes
   # only. Otherwise, use all genes in the data.
   if (!is.null(gene_info) & "gene_biotype" %in% colnames(gene_info) &
@@ -374,7 +402,7 @@ find_pca_outliers <- function(data,
     genes_use <- rownames(data)
   }
 
-  data <- data[genes_use, ]
+  data <- data[intersect(genes_use, rownames(data)), ]
 
   # Remove genes that are mostly 0's, which may be 0 or a negative number in
   # log2-scale. For PCA, restrict to genes expressed in >= 80% of samples
@@ -426,6 +454,8 @@ find_pca_outliers <- function(data,
 #'   [find_pca_outliers()] as `n_sds * sd(PC1)`.
 #' @param pc2_threshold the outlier threshold for PC2, which is calculated by
 #'   [find_pca_outliers()] as `n_sds * sd(PC2)`.
+#' @param print_plot (optional) whether to print the plot out before returning,
+#'   or not. Defaults to TRUE.
 #' @param color (optional) the name of the column in `pca_df` to use as the
 #'   "color" in the [ggplot2::aes()] specification. If `color` is `NULL` or is
 #'   not a valid column name, all points will be black instead. Defaults to
@@ -434,15 +464,14 @@ find_pca_outliers <- function(data,
 #'   plot, in the format <aes_spec> = "column_name_as_string". For example,
 #'   `shape = "diagnosis"` or `size = "quantity"`.
 #'
-#' @return a [ggplot2::ggplot] object with the built plot. The plot is also
-#'   printed out.
+#' @return a [ggplot2::ggplot] object with the built plot.
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#' test
 #' }
 plot_pca_outliers <- function(pca_df, pc1_threshold, pc2_threshold,
+                              print_plot = TRUE,
                               color = "is_outlier", ...) {
   # Formula for an ellipse is (x^2 / a^2) + (y^2 / b^2) = 1, so
   # y = +/- sqrt((1 - x^2 / a^2) * b^2)
@@ -484,7 +513,9 @@ plot_pca_outliers <- function(pca_df, pc1_threshold, pc2_threshold,
                        inherit.aes = FALSE) +
     ggplot2::theme_bw()
 
-  print(plt)
+  if (print_plot) {
+    print(plt)
+  }
 
   return(plt)
 }
@@ -539,7 +570,6 @@ plot_pca_outliers <- function(pca_df, pc1_threshold, pc2_threshold,
 #'
 #' @examples
 #' \dontrun{
-#' test = 1
 #' }
 find_sex_mismatches <- function(metadata, data,
                                 sample_colname = "specimenID",
@@ -581,8 +611,6 @@ find_sex_mismatches <- function(metadata, data,
                                        .default = "female"),
       sex_valid = (reported_sex == estimated_sex)
     ) |>
-    # Put FALSE last so they are plotted on top of other dots
-    dplyr::arrange(dplyr::desc(sex_valid)) |>
     as.data.frame()
 
   mismatches <- sex_check[, sample_colname][!sex_check$sex_valid]
@@ -608,20 +636,24 @@ find_sex_mismatches <- function(metadata, data,
 #' @param y_expr_threshold (optional) a numeric threshold that splits samples
 #'   based on mean expression of the Y-chromosome marker genes. The threshold
 #'   will be drawn as a line across the plots. Defaults to 2.0.
+#' @param print_plot (optional) whether to print the two plots out before
+#'   returning, or not. Defaults to TRUE.
 #'
 #' @return
 #' a list of two [ggplot2::ggplot] plots, where the first plot is colored by
-#' reported sex and the second plot is colored by mismatch status. Each plot
-#' is also printed out.
+#' reported sex and the second plot is colored by mismatch status.
 #' @export
 #'
 #' @seealso [find_sex_mismatches()]
 #'
 #' @examples
 #' \dontrun{
-#' test
 #' }
-plot_sex_mismatch_results <- function(sex_check_df, y_expr_threshold = 2.0) {
+plot_sex_mismatch_results <- function(sex_check_df, y_expr_threshold = 2.0,
+                                      print_plot = TRUE) {
+  # Put FALSE last so they are plotted on top of other dots
+  sex_check_df <- dplyr::arrange(sex_check_df, dplyr::desc(sex_valid))
+
   plt1 <- ggplot2::ggplot(sex_check_df,
                           ggplot2::aes(x = XIST, y = mean_Y, color = reported_sex)) +
     ggplot2::geom_point(size = 0.5) +
@@ -639,7 +671,9 @@ plot_sex_mismatch_results <- function(sex_check_df, y_expr_threshold = 2.0) {
     ggplot2::geom_hline(yintercept = y_expr_threshold, linetype = "dotdash",
                         color = "red", alpha = 0.8)
 
-  print(plt1)
-  print(plt2)
+  if (print_plot) {
+    print(plt1)
+    print(plt2)
+  }
   return(list(plt1, plt2))
 }

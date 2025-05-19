@@ -81,7 +81,6 @@ columns with \link[ggplot2:aes]{ggplot2::aes} specifications like color and shap
 }
 \examples{
 \dontrun{
-test
 }
 }
 \seealso{

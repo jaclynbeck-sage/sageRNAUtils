@@ -62,7 +62,6 @@ and KDM5D, which were determined to be good markers for sex in \href{https://www
 }
 \examples{
 \dontrun{
-test = 1
 }
 }
 \seealso{
