@@ -1,3 +1,86 @@
+#' Find Outliers by the IQR Method
+#'
+#' Labels points as outliers if they are below `Q1 - 1.5 * IQR` and/or above
+#' `Q3 + 1.5 * IQR`, with the option to modify the multiplier.
+#'
+#' Note that `NA` values in `data` are ignored in the calculation of `Q1`, `Q3`,
+#' and `IQR`, and all `NA` data points will be marked as outliers in the final
+#' result.
+#'
+#' @param data a numeric vector of data points
+#' @param tail (optional) either "both", "lower", or "upper". If "lower", only
+#'   points below `Q1 - IQR_mult * IQR` will be marked as outliers. If "upper",
+#'   only points above `Q3 + IQR_mult * IQR` will be marked as outliers. If
+#'   "both", points in both tails will be marked as outliers. Defaults to
+#'   "both".
+#' @param IQR_mult (optional) a multiplier to apply to the IQR. Defaults to 1.5.
+#'
+#' @return a vector of TRUE/FALSE values, where TRUE indicates that the point is
+#'   an outlier. Any `NA` values in `data` will be marked as TRUE.
+#' @export
+#'
+#' @seealso [is_outlier_SD()]
+#'
+#' @examples
+#' data <- rnorm(n = 1000)
+#' outliers <- is_outlier_IQR(data = data, tail = "upper")
+#' print(data[outliers])
+is_outlier_IQR <- function(data, tail = "both", IQR_mult = 1.5) {
+  iqr <- stats::IQR(data, na.rm = TRUE) * IQR_mult
+  q1 <- stats::quantile(data, 0.25, na.rm = TRUE)
+  q3 <- stats::quantile(data, 0.75, na.rm = TRUE)
+
+  switch(
+    tail,
+    "both" = (data < q1 - iqr) | (data > q3 + iqr),
+    "upper" = data > q3 + iqr,
+    "lower" = data < q1 - iqr
+  ) | is.na(data)
+}
+
+
+#' Find Outliers using Mean and Standard Deviation
+#'
+#' Labels points as outliers if they are below `mean - n_sds * sd` and/or above
+#' `mean + n_sds * sd`, where `n_sds` is a configurable multiplier.
+#'
+#' Note that `NA` values in `data` are ignored in the calculation of `mean` and
+#' `sd`, and all `NA` data points will be marked as outliers in the final
+#' result.
+#'
+#' @param data a numeric vector of data points
+#' @param tail (optional) either "both", "lower", or "upper". If "lower", only
+#'   points below `mean - n_sds * SD` will be marked as outliers. If "upper",
+#'   only points above `mean + n_sds * SD` will be marked as outliers. If
+#'   "both", points in both tails will be marked as outliers. Defaults to
+#'   "both".
+#' @param n_sds (optional) the number of standard deviations away from the mean
+#'   that a point needs to be in order to be marked as an outlier. Defaults to
+#'   4.
+#'
+#' @return a vector of TRUE/FALSE values, where TRUE indicates that the point is
+#'   an outlier. Any `NA` values in `data` will be marked as TRUE.
+#' @export
+#'
+#' @seealso [is_outlier_IQR()]
+#'
+#' @examples
+#' data <- rnorm(n = 1000)
+#' outliers <- is_outlier_SD(data = data, n_sds = 3)
+#' print(data[outliers])
+is_outlier_SD <- function(data, tail = "both", n_sds = 4) {
+  mean_d <- mean(data, na.rm = TRUE)
+  stdev <- n_sds * stats::sd(data, na.rm = TRUE)
+
+  switch(
+    tail,
+    "both" = (data < mean_d - stdev) | (data > mean_d + stdev),
+    "upper" = data > mean_d + stdev,
+    "lower" = data < mean_d - stdev
+  ) | is.na(data)
+}
+
+
 #' Format FastQC Output
 #'
 #' Loads a folder of fastqc.zip files output by FastQC, combines data for all

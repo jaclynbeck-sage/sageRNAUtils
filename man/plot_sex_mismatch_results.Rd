@@ -4,7 +4,7 @@
 \alias{plot_sex_mismatch_results}
 \title{Plot Sex Mismatch Results}
 \usage{
-plot_sex_mismatch_results(sex_check_df, y_expr_threshold)
+plot_sex_mismatch_results(sex_check_df, y_expr_threshold = 2)
 }
 \arguments{
 \item{sex_check_df}{a data.frame containing \code{reported_sex}, \code{estimated_sex},
@@ -13,11 +13,8 @@ and expression values for \code{XIST} and \code{mean_Y}, as output by
 denoting whether the reported sex matches the estimated sex.}
 
 \item{y_expr_threshold}{(optional) a numeric threshold that splits samples
-based on mean expression of the Y-chromosome marker genes. Samples with
-mean expression above the threshold will be labeled as "male" while samples
-with mean expression below the threshold will be labeled as "female".
-Defaults to 2.0, though this value may need to be be calibrated to the
-dataset.}
+based on mean expression of the Y-chromosome marker genes. The threshold
+will be drawn as a line across the plots. Defaults to 2.0.}
 }
 \value{
 a list of two \link[ggplot2:ggplot]{ggplot2::ggplot} plots, where the first plot is colored by
