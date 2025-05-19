@@ -263,7 +263,7 @@ find_pca_outliers_by_group <- function(data, pca_group,
                                        metadata = NULL,
                                        sample_colname = "specimenID",
                                        gene_info = NULL) {
-  if (length(pca_group == 1)) {
+  if (length(pca_group) == 1) {
     if (is.null(metadata)) {
       stop("`pca_group` is a single value but no metadata was supplied.")
     }
@@ -271,10 +271,8 @@ find_pca_outliers_by_group <- function(data, pca_group,
       stop(paste0("\"", pca_group, "\" is not a valid column in `metadata`."))
     }
     pca_group <- metadata[, pca_group]
-  }
-
-  if (length(pca_group) != ncol(data)) {
-    stop("`pca_group` does not match the number of samples in `data`.")
+  } else if (length(pca_group) != ncol(data)) {
+    stop("The number of samples in `pca_group` does not match the number of samples in `data`.")
   }
 
   if (!is.null(metadata)) {
@@ -417,11 +415,19 @@ find_pca_outliers <- function(data,
   pca_res <- stats::prcomp(t(data), center = TRUE, scale. = TRUE)
 
   if (!is.null(metadata)) {
+    if (!(sample_colname %in% colnames(metadata))) {
+      stop(paste0("\"", sample_colname, "\" is not a valid column in `metadata`."))
+    }
+
+    if (!all(colnames(data) %in% metadata[, sample_colname])) {
+      stop("`metadata` is missing samples that are present in `data`.")
+    }
+
     pca_df <- merge(metadata, pca_res$x,
                     by.x = sample_colname, by.y = "row.names")
   } else {
     sample_colname <- "sample"
-    pca_df <- pca_res$x
+    pca_df <- as.data.frame(pca_res$x)
     pca_df$sample <- rownames(pca_df)
   }
 
@@ -596,6 +602,18 @@ find_sex_mismatches <- function(metadata, data,
   if (any(grepl("ENSG00", rownames(data)))) {
     data <- data[names(sex_genes), ]
     rownames(data) <- sex_genes
+  }
+
+  if (!(sample_colname %in% colnames(metadata))) {
+    stop(paste0("\"", sample_colname, "\" is not a valid column in `metadata`."))
+  }
+
+  if (!(sex_colname %in% colnames(metadata))) {
+    stop(paste0("\"", sex_colname, "\" is not a valid column in `metadata`."))
+  }
+
+  if (!all(colnames(data) %in% metadata[, sample_colname])) {
+    stop("`metadata` is missing samples that are present in `data`.")
   }
 
   sex_check <- metadata |>
