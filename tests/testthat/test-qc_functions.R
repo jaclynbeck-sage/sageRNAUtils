@@ -327,6 +327,8 @@ test_that("find_pca_outliers_by_group splits samples into groups with no metadat
   expect_identical(results_split$outliers,
                    c("group1_sample_out1", "group1_sample_out2",
                      "group3_sample_out3", "group3_sample_out4"))
+  expect_identical(names(results_split$group_results),
+                   c("group1", "group2", "group3"))
 })
 
 test_that("find_pca_outliers_by_group splits samples by metadata column name", {
@@ -346,6 +348,8 @@ test_that("find_pca_outliers_by_group splits samples by metadata column name", {
   expect_identical(results_split$outliers,
                    c("group1_sample_out1", "group1_sample_out2",
                      "group3_sample_out3", "group3_sample_out4"))
+  expect_identical(names(results_split$group_results),
+                   c("group1", "group2", "group3"))
 
   expect_true(all(sapply(results_split$group_results, function(res) {
     "extra_column" %in% colnames(res$pca_df)
@@ -353,9 +357,11 @@ test_that("find_pca_outliers_by_group splits samples by metadata column name", {
 
   expected_extra_column <- dplyr::arrange(metadata, specimenID) |>
     dplyr::pull(extra_column)
-  received_extra_column <- unlist(lapply(results_split$group_results, function(res) {
+  received_extra_column <- lapply(results_split$group_results, function(res) {
     dplyr::arrange(res$pca_df, specimenID) |> dplyr::pull(extra_column)
-  }))
+  }) |>
+    unlist() |>
+    as.vector() # Remove names
 
   expect_identical(received_extra_column, expected_extra_column)
 })
@@ -375,6 +381,8 @@ test_that("find_pca_outliers_by_group splits samples into groups with metadata c
   expect_identical(results_split$outliers,
                    c("group1_sample_out1", "group1_sample_out2",
                      "group3_sample_out3", "group3_sample_out4"))
+  expect_identical(names(results_split$group_results),
+                   c("group1", "group2", "group3"))
 
   expect_true(all(sapply(results_split$group_results, function(res) {
     "extra_column" %in% colnames(res$pca_df)
@@ -382,9 +390,11 @@ test_that("find_pca_outliers_by_group splits samples into groups with metadata c
 
   expected_extra_column <- dplyr::arrange(metadata, specimenID) |>
     dplyr::pull(extra_column)
-  received_extra_column <- unlist(lapply(results_split$group_results, function(res) {
+  received_extra_column <- lapply(results_split$group_results, function(res) {
     dplyr::arrange(res$pca_df, specimenID) |> dplyr::pull(extra_column)
-  }))
+  }) |>
+    unlist() |>
+    as.vector() # Remove names
 
   expect_identical(received_extra_column, expected_extra_column)
 })
@@ -427,6 +437,51 @@ test_that("find_pca_outliers_by_group checks for missing samples in pca_group", 
 
   expect_error(find_pca_outliers_by_group(data, pca_group = pca_group),
                regexp = "number of samples")
+})
+
+test_that("find_pca_outliers_by_group ignores groups that are too small", {
+  data <- matrix_for_pca_with_groups()
+  pca_group <- stringr::str_replace(colnames(data), "_.*", "")
+  pca_group[60:64] <- "small_group" # Removes outliers from group 3
+
+  expect_message(
+    {results <- find_pca_outliers_by_group(data, pca_group = pca_group)},
+    regexp = "'small_group' is too small"
+  )
+
+  expect_length(results$group_results, 3)
+  expect_length(results$outliers, 2)
+  expect_identical(results$outliers, c("group1_sample_out1", "group1_sample_out2"))
+  expect_identical(names(results$group_results), c("group1", "group2", "group3"))
+})
+
+test_that("find_pca_outliers_by_group returns empty lists when all groups are too small", {
+  data <- matrix_for_pca_with_groups()[, 1:9]
+  pca_group <- rep("group1", 9)
+
+  expect_message(
+    {results <- find_pca_outliers_by_group(data, pca_group = pca_group)},
+    regexp = "'group1' is too small"
+  )
+
+  expect_length(results$group_results, 0)
+  expect_null(results$outliers)
+})
+
+test_that("find_pca_outliers_by_group uses different min_group_size", {
+  data <- matrix_for_pca_with_groups()[, 1:60] # Makes Group 3 have < 20 samples
+  pca_group <- stringr::str_replace(colnames(data), "_.*", "")
+
+  expect_message(
+    {results <- find_pca_outliers_by_group(data, pca_group = pca_group,
+                                           min_group_size = 20)},
+    regexp = "'group3' is too small"
+  )
+
+  expect_length(results$group_results, 2)
+  expect_length(results$outliers, 2)
+  expect_identical(results$outliers, c("group1_sample_out1", "group1_sample_out2"))
+  expect_identical(names(results$group_results), c("group1", "group2"))
 })
 
 # TODO test that n_sds and gene_info pass through to find_pca_outliers
@@ -486,7 +541,7 @@ test_that("find_sex_mismatches correctly calculates mean Y expression", {
                ignore_attr = TRUE) # Ignore missing col/rownames
 
   mean_Y <- rowMeans(results$sex_check_df[4:7])
-  expect_equal(results$sex_check_df$mean_Y, mean_Y)
+  expect_identical(results$sex_check_df$mean_Y, mean_Y)
 })
 
 test_that("find_sex_mismatches finds outliers", {

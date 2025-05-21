@@ -242,6 +242,8 @@ load_fastqc_output <- function(files, sample_names, ...) {
 #'   `metadata` is missing or `NULL`, `pca_group` should be a vector the same
 #'   length as the number of columns in `data`, where each entry is the group
 #'   assignment of the corresponding sample in `data`.
+#' @param min_group_size (optional) the minimum number of samples that must be
+#'   in a group in order to run outlier detection on that group. Defaults to 10.
 #' @inheritParams find_pca_outliers
 #'
 #' @return a named list with the following items:
@@ -250,6 +252,7 @@ load_fastqc_output <- function(files, sample_names, ...) {
 #' \item{outliers}{a character vector of sample names that were marked as outliers in any group}
 #'
 #' Each item in `group_results` can be used to plot the results with [plot_pca_outliers()].
+#' If a group was too small, it will not have an entry in `group_results`.
 #' @export
 #'
 #' @seealso [find_pca_outliers()], [simple_lognorm()],
@@ -262,7 +265,8 @@ find_pca_outliers_by_group <- function(data, pca_group,
                                        n_sds = 4,
                                        metadata = NULL,
                                        sample_colname = "specimenID",
-                                       gene_info = NULL) {
+                                       gene_info = NULL,
+                                       min_group_size = 10) {
   if (length(pca_group) == 1) {
     if (is.null(metadata)) {
       stop("`pca_group` is a single value but no metadata was supplied.")
@@ -287,6 +291,11 @@ find_pca_outliers_by_group <- function(data, pca_group,
   }
 
   results <- lapply(unique(pca_group), function(grp) {
+    if (sum(pca_group == grp) < min_group_size) {
+      message(paste0("Group '", grp, "' is too small to run outlier detection. Skipping..."))
+      return(NULL)
+    }
+
     data_group <- data[, pca_group == grp]
 
     if (is.null(metadata)) {
@@ -303,11 +312,14 @@ find_pca_outliers_by_group <- function(data, pca_group,
                       gene_info = gene_info)
   })
 
-  names(results) <- unique(metadata$pca_group)
+  names(results) <- unique(pca_group)
+
+  # Remove any NULL entries from groups that were too small
+  results <- results[lengths(results) > 0]
 
   return(list(
     group_results = results,
-    outliers = unlist(lapply(results, "[[", "outliers"))
+    outliers = lapply(results, "[[", "outliers") |> unlist() |> as.vector()
   ))
 }
 
@@ -479,6 +491,8 @@ find_pca_outliers <- function(data,
 plot_pca_outliers <- function(pca_df, pc1_threshold, pc2_threshold,
                               print_plot = TRUE,
                               color = "is_outlier", ...) {
+  # TODO add ggrepel labels and make outlier points larger. Find a way to get
+  # title information
   # Formula for an ellipse is (x^2 / a^2) + (y^2 / b^2) = 1, so
   # y = +/- sqrt((1 - x^2 / a^2) * b^2)
   ellipse_points <- function(axis_A, axis_B) {

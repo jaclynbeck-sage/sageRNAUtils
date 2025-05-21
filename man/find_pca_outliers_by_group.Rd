@@ -10,7 +10,8 @@ find_pca_outliers_by_group(
   n_sds = 4,
   metadata = NULL,
   sample_colname = "specimenID",
-  gene_info = NULL
+  gene_info = NULL,
+  min_group_size = 10
 )
 }
 \arguments{
@@ -44,6 +45,9 @@ variables that provide metadata about each gene. If provided, the PCA will
 run using only protein-coding autosomal genes, which are extracted from
 \code{gene_info}. If \code{NULL} or not provided, the PCA will use all genes in
 \code{data}. Defaults to \code{NULL}. See details for more information.}
+
+\item{min_group_size}{(optional) the minimum number of samples that must be
+in a group in order to run outlier detection on that group. Defaults to 10.}
 }
 \value{
 a named list with the following items:
@@ -52,6 +56,7 @@ a named list with the following items:
 \item{outliers}{a character vector of sample names that were marked as outliers in any group}
 
 Each item in \code{group_results} can be used to plot the results with \code{\link[=plot_pca_outliers]{plot_pca_outliers()}}.
+If a group was too small, it will not have an entry in \code{group_results}.
 }
 \description{
 Finds outliers via PCA, but splits the data into groups and runs PCA outlier
