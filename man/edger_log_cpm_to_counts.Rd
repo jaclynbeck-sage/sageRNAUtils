@@ -4,7 +4,12 @@
 \alias{edger_log_cpm_to_counts}
 \title{Convert edgeR-style Log-CPM Values to Counts}
 \usage{
-edger_log_cpm_to_counts(data, library_size, prior_count = 2)
+edger_log_cpm_to_counts(
+  data,
+  library_size,
+  size_factors = NULL,
+  prior_count = 2
+)
 }
 \arguments{
 \item{data}{a matrix or matrix-like object where rows are genes and columns
@@ -13,9 +18,10 @@ call to \code{\link[edgeR:cpm]{edgeR::cpm()}} with argument \code{log = TRUE}.}
 
 \item{library_size}{a numeric vector describing the library size of each
 sample in \code{data}. The length of \code{library_size} must match the number of
-columns in \code{data}. Typically library size is the sum of all counts in a
-sample, but this could also be modified with TMM or other size factors as
-well.}
+columns in \code{data}.}
+
+\item{size_factors}{(optional) a numeric vector of additional size factors to
+include in the library size, for example TMM factors. Defaults to \code{NULL}.}
 
 \item{prior_count}{(optional) the \code{prior.count} argument that was used in the
 original call to \code{\link[edgeR:cpm]{edgeR::cpm()}}. Defaults to 2, which is the same default in
@@ -52,6 +58,15 @@ samples as above and undo the normalization:
 counts <- round(matrix(runif(1000, min = 0, max = 100), ncol = 10))
 log_cpm <- edgeR::cpm(counts, log = TRUE)
 new_counts <- edger_log_cpm_to_counts(log_cpm, library_size = colSums(counts))
+all(new_counts == counts)
+
+# With size factors
+dge <- edgeR::DGEList(counts)
+dge <- edgeR::normLibSizes(dge)
+log_cpm <- edgeR::cpm(dge, log = TRUE)
+new_counts <- edger_log_cpm_to_counts(log_cpm,
+                                      library_size = dge$samples$lib.size,
+                                      size_factors = dge$samples$norm.factors)
 all(new_counts == counts)
 }
 \seealso{

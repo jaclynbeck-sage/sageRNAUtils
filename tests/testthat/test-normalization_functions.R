@@ -51,6 +51,52 @@ test_that("simple_cpm works with non-integers", {
   expect_identical(counts_cpm, counts / 16.8 * 1e6)
 })
 
+test_that("simple_cpm works with different library_size", {
+  counts <- matrix(data = c(0:5, 5:0), nrow = 6)
+  library_size <- c(10, 20)
+
+  counts_cpm <- simple_cpm(counts, library_size = library_size)
+  expected <- sweep(counts, 2, library_size, "/") * 1e6
+
+  expect_identical(counts_cpm, expected)
+})
+
+test_that("simple_cpm works with different size_factors", {
+  counts <- matrix(data = c(0:5, 5:0), nrow = 6)
+  size_factors <- c(0.75, 1.5)
+
+  counts_cpm <- simple_cpm(counts, size_factors = size_factors)
+  expected <- sweep(counts, 2, colSums(counts) * size_factors, "/") * 1e6
+
+  expect_identical(counts_cpm, expected)
+})
+
+test_that("simple_cpm works with different library_size and size_factors", {
+  counts <- matrix(data = c(0:5, 5:0), nrow = 6)
+  library_size <- c(10, 20)
+  size_factors <- c(0.75, 1.5)
+
+  counts_cpm <- simple_cpm(counts, library_size = library_size, size_factors = size_factors)
+  expected <- sweep(counts, 2, library_size * size_factors, "/") * 1e6
+
+  expect_identical(counts_cpm, expected)
+})
+
+test_that("simple_cpm checks for correct lengths", {
+  counts <- matrix(data = c(0:5, 5:0), nrow = 6)
+  library_size <- c(10, 20, 30)
+  size_factors <- c(0.75, 1.5, 1, 1)
+
+  expect_error(simple_cpm(counts, library_size = library_size),
+               regexp = "The length of 'library_size'")
+
+  expect_error(simple_cpm(counts, size_factors = size_factors),
+               regexp = "'library_size' and 'size_factors'")
+
+  expect_error(simple_cpm(counts, library_size[1:2], size_factors = size_factors),
+               regexp = "'library_size' and 'size_factors'")
+})
+
 
 # simple_lognorm ---------------------------------------------------------------
 
@@ -128,6 +174,53 @@ test_that("simple_lognorm retains matrix row and column names", {
   expect_identical(rownames(counts_log), genes)
 })
 
+test_that("simple_lognorm works with different library_size", {
+  counts <- matrix(data = c(0:5, 5:0), nrow = 6)
+  library_size <- c(10, 20)
+
+  counts_log <- simple_lognorm(counts, library_size = library_size)
+  expected <- log2(sweep(counts, 2, library_size, "/") * 1e6 + 0.5)
+
+  expect_identical(counts_log, expected)
+})
+
+test_that("simple_lognorm works with different size_factors", {
+  counts <- matrix(data = c(0:5, 5:0), nrow = 6)
+  size_factors <- c(0.75, 1.5)
+
+  counts_log <- simple_lognorm(counts, size_factors = size_factors)
+  expected <- log2(sweep(counts, 2, colSums(counts) * size_factors, "/") * 1e6 + 0.5)
+
+  expect_identical(counts_log, expected)
+})
+
+test_that("simple_lognorm works with different library_size and size_factors", {
+  counts <- matrix(data = c(0:5, 5:0), nrow = 6)
+  library_size <- c(10, 20)
+  size_factors <- c(0.75, 1.5)
+
+  counts_log <- simple_lognorm(counts, library_size = library_size, size_factors = size_factors)
+  expected <- log2(sweep(counts, 2, library_size * size_factors, "/") * 1e6 + 0.5)
+
+  expect_identical(counts_log, expected)
+})
+
+test_that("simple_lognorm checks for correct lengths", {
+  counts <- matrix(data = c(0:5, 5:0), nrow = 6)
+  library_size <- c(10, 20, 30)
+  size_factors <- c(0.75, 1.5, 1, 1)
+
+  expect_error(simple_lognorm(counts, library_size = library_size),
+               regexp = "The length of 'library_size'")
+
+  expect_error(simple_lognorm(counts, size_factors = size_factors),
+               regexp = "'library_size' and 'size_factors'")
+
+  expect_error(simple_lognorm(counts, library_size[1:2], size_factors = size_factors),
+               regexp = "'library_size' and 'size_factors'")
+})
+
+
 
 # cpm_to_counts ----------------------------------------------------------------
 
@@ -189,3 +282,59 @@ test_that("cpm_to_counts retains matrix row and column names", {
   expect_identical(colnames(new_counts), c("s1", "s2"))
   expect_identical(rownames(new_counts), genes)
 })
+
+test_that("cpm_to_counts uses different library_size", {
+  counts <- matrix(data = c(0:5, 5:0), nrow = 6)
+  library_size <- c(10, 20)
+
+  counts_cpm <- sweep(counts, 2, library_size, "/") * 1e6
+  new_counts <- cpm_to_counts(counts_cpm, library_size = library_size)
+
+  # Using expect_equal instead of expect_identical because new_counts will be
+  # a matrix of doubles and counts is a matrix of integers
+  expect_equal(new_counts, counts)
+})
+
+test_that("cpm_to_counts uses different size_factors", {
+  counts <- matrix(data = c(0:5, 5:0), nrow = 6)
+  size_factors <- c(0.75, 1.5)
+
+  counts_cpm <- sweep(counts, 2, colSums(counts) * size_factors, "/") * 1e6
+  new_counts <- cpm_to_counts(counts_cpm, library_size = colSums(counts),
+                              size_factors = size_factors)
+
+  # Using expect_equal instead of expect_identical because new_counts will be
+  # a matrix of doubles and counts is a matrix of integers
+  expect_equal(new_counts, counts)
+})
+
+test_that("cpm_to_counts uses different library_size and size_factors", {
+  counts <- matrix(data = c(0:5, 5:0), nrow = 6)
+  library_size <- c(10, 20)
+  size_factors <- c(0.75, 1.5)
+
+  counts_cpm <- sweep(counts, 2, library_size * size_factors, "/") * 1e6
+  new_counts <- cpm_to_counts(counts_cpm, library_size = library_size,
+                              size_factors = size_factors)
+
+  # Using expect_equal instead of expect_identical because new_counts will be
+  # a matrix of doubles and counts is a matrix of integers
+  expect_equal(new_counts, counts)
+})
+
+test_that("cpm_to_counts checks for correct lengths", {
+  counts <- matrix(data = c(0:5, 5:0), nrow = 6)
+  library_size <- c(10, 20, 30)
+  size_factors <- c(0.75, 1.5, 1, 1)
+
+  counts_cpm <- sweep(counts, 2, colSums(counts), "/") * 1e6
+
+  expect_error(cpm_to_counts(counts_cpm, library_size = library_size),
+               regexp = "The length of 'library_size'")
+
+  expect_error(cpm_to_counts(counts_cpm, library_size = colSums(counts),
+                             size_factors = size_factors),
+               regexp = "'library_size' and 'size_factors'")
+})
+
+# TODO tests for log_cpm_to_counts, edger_log_cpm_to_counts, and cqn_to_counts

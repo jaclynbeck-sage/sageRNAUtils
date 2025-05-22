@@ -311,6 +311,7 @@ test_that("find_pca_outliers checks for missing samples in metadata", {
                regexp = "missing samples")
 })
 
+# TODO test different data types (matrix, df, sparse)
 
 # find_pca_outliers_by_group ---------------------------------------------------
 
@@ -485,6 +486,7 @@ test_that("find_pca_outliers_by_group uses different min_group_size", {
 })
 
 # TODO test that n_sds and gene_info pass through to find_pca_outliers
+# TODO test different data types (matrix, df, sparse)
 
 
 # find_sex_mismatches ----------------------------------------------------------
@@ -637,6 +639,8 @@ test_that("find_sex_mismatches checks for missing samples in metadata", {
   expect_error(find_sex_mismatches(metadata, data),
                regexp = "missing samples")
 })
+
+# TODO test different data types (matrix, df, sparse)
 
 
 # TODO fastqc read function tests

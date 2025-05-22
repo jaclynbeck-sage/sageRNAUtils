@@ -4,12 +4,24 @@
 \alias{simple_lognorm}
 \title{Simple log2-Normalization of a Counts Matrix}
 \usage{
-simple_lognorm(data, pseudocount = 0.5)
+simple_lognorm(
+  data,
+  library_size = NULL,
+  size_factors = NULL,
+  pseudocount = 0.5
+)
 }
 \arguments{
 \item{data}{a matrix or matrix-like object where rows are genes and columns
 are samples. Data should be un-normalized counts. All values in \code{data}
 should be >= 0.}
+
+\item{library_size}{(optional) a numeric vector of library sizes for each
+column in \code{data}. If \code{NULL}, \code{library_size} will be \code{colSums(data)}.
+Defaults to \code{NULL}.}
+
+\item{size_factors}{(optional) a numeric vector of additional size factors to
+include in the library size, for example TMM factors. Defaults to \code{NULL}.}
 
 \item{pseudocount}{a pseudocount to add to every CPM value when taking the
 log2, to avoid taking log2(0). Defaults to 0.5}

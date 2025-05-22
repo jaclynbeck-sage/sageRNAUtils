@@ -8,6 +8,11 @@
 #'
 #' @param data a matrix or matrix-like object where rows are genes and columns
 #'   are samples. All values in `data` should be >= 0.
+#' @param library_size (optional) a numeric vector of library sizes for each
+#'   column in `data`. If `NULL`, `library_size` will be `colSums(data)`.
+#'   Defaults to `NULL`.
+#' @param size_factors (optional) a numeric vector of additional size factors to
+#'   include in the library size, for example TMM factors. Defaults to `NULL`.
 #'
 #' @return an object the same type and shape as data with all counts transformed
 #'   to CPM
@@ -19,12 +24,32 @@
 #' counts <- round(matrix(runif(1000, min = 0, max = 100), ncol = 10))
 #' cpm_data <- simple_cpm(counts)
 #' all(colSums(cpm_data) == 1e6)
-simple_cpm <- function(data) {
-  if (inherits(data, "Matrix")) {
-    sweep(data, 2, Matrix::colSums(data), "/") * 1e6
-  } else {
-    sweep(data, 2, colSums(data), "/") * 1e6
+#'
+#' # With size factors
+#' tmm <- edgeR::normLibSizes(counts)
+#' cpm_data <- simple_cpm(counts, size_factors = tmm)
+simple_cpm <- function(data, library_size = NULL, size_factors = NULL) {
+  if (is.null(library_size)) {
+    # Use diferent functions for sparse vs dense matrices
+    if (inherits(data, "Matrix")) {
+      library_size <- Matrix::colSums(data)
+    } else {
+      library_size <- colSums(data)
+    }
   }
+
+  if (length(library_size) != ncol(data)) {
+    stop("The length of 'library_size' doesn't match the number of columns in 'data'.")
+  }
+
+  if (!is.null(size_factors)) {
+    if (length(size_factors) != length(library_size)) {
+      stop("'library_size' and 'size_factors' are not the same length.")
+    }
+    library_size <- library_size * size_factors
+  }
+
+  sweep(data, 2, library_size, "/") * 1e6
 }
 
 
@@ -38,6 +63,7 @@ simple_cpm <- function(data) {
 #'   should be >= 0.
 #' @param pseudocount a pseudocount to add to every CPM value when taking the
 #'   log2, to avoid taking log2(0). Defaults to 0.5
+#' @inheritParams simple_cpm
 #'
 #' @return an object the same type and shape as data with all counts transformed
 #'   to log2(CPM)
@@ -50,14 +76,16 @@ simple_cpm <- function(data) {
 #' # count values of 0 remain 0.
 #' counts <- round(matrix(runif(1000, min = 0, max = 100), ncol = 10))
 #' log_data <- simple_lognorm(counts, pseudocount = 1)
-simple_lognorm <- function(data, pseudocount = 0.5) {
+simple_lognorm <- function(data, library_size = NULL, size_factors = NULL, pseudocount = 0.5) {
   if (pseudocount == 1 & inherits(data, "sparseMatrix")) {
     # Preserves sparsity
-    sparse_data <- simple_cpm(data)
+    sparse_data <- simple_cpm(data, library_size = library_size,
+                              size_factors = size_factors)
     sparse_data@x <- log2(sparse_data@x + pseudocount)
     return(sparse_data)
   } else {
-    return(log2(simple_cpm(data) + pseudocount))
+    return(log2(simple_cpm(data, library_size = library_size, size_factors = size_factors)
+                + pseudocount))
   }
 }
 
@@ -69,9 +97,7 @@ simple_lognorm <- function(data, pseudocount = 0.5) {
 #'
 #' @param library_size a numeric vector describing the library size of each
 #'   sample in `data`. The length of `library_size` must match the number of
-#'   columns in `data`. Typically library size is the sum of all counts in a
-#'   sample, but this could also be modified with TMM or other size factors as
-#'   well.
+#'   columns in `data`.
 #' @inheritParams simple_cpm
 #'
 #' @return an object the same type and shape as `data` where CPM values have
@@ -89,7 +115,18 @@ simple_lognorm <- function(data, pseudocount = 0.5) {
 #' # Reverse the operation
 #' counts2 <- cpm_to_counts(cpm_data, library_size = colSums(counts))
 #' all(counts == counts2)
-cpm_to_counts <- function(data, library_size) {
+cpm_to_counts <- function(data, library_size, size_factors = NULL) {
+  if (length(library_size) != ncol(data)) {
+    stop("The length of 'library_size' doesn't match the number of columns in 'data'.")
+  }
+
+  if (!is.null(size_factors)) {
+    if (length(size_factors) != length(library_size)) {
+      stop("'library_size' and 'size_factors' are not the same length.")
+    }
+    library_size <- library_size * size_factors
+  }
+
   round(sweep(data, 2, library_size, "*") / 1e6)
 }
 
@@ -122,8 +159,8 @@ cpm_to_counts <- function(data, library_size) {
 #'                              library_size = colSums(counts),
 #'                              pseudocount = 1)
 #' all(counts == counts2)
-log_cpm_to_counts <- function(data, library_size, pseudocount = 0.5) {
-  cpm_to_counts(2^data - pseudocount, library_size = library_size)
+log_cpm_to_counts <- function(data, library_size, size_factors = NULL, pseudocount = 0.5) {
+  cpm_to_counts(2^data - pseudocount, library_size = library_size, size_factors = size_factors)
 }
 
 
@@ -172,7 +209,23 @@ log_cpm_to_counts <- function(data, library_size, pseudocount = 0.5) {
 #' log_cpm <- edgeR::cpm(counts, log = TRUE)
 #' new_counts <- edger_log_cpm_to_counts(log_cpm, library_size = colSums(counts))
 #' all(new_counts == counts)
-edger_log_cpm_to_counts <- function(data, library_size, prior_count = 2) {
+#'
+#' # With size factors
+#' dge <- edgeR::DGEList(counts)
+#' dge <- edgeR::normLibSizes(dge)
+#' log_cpm <- edgeR::cpm(dge, log = TRUE)
+#' new_counts <- edger_log_cpm_to_counts(log_cpm,
+#'                                       library_size = dge$samples$lib.size,
+#'                                       size_factors = dge$samples$norm.factors)
+#' all(new_counts == counts)
+edger_log_cpm_to_counts <- function(data, library_size, size_factors = NULL, prior_count = 2) {
+  if (!is.null(size_factors)) {
+    if (length(size_factors) != length(library_size)) {
+      stop("'library_size' and 'size_factors' are not the same length.")
+    }
+    library_size <- library_size * size_factors
+  }
+
   prior <- prior_count * library_size / mean(library_size)
   adj_lib_size <- library_size + 2 * prior
 

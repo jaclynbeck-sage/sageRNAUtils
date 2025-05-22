@@ -4,7 +4,7 @@
 \alias{cpm_to_counts}
 \title{Convert CPM Values Back to Counts}
 \usage{
-cpm_to_counts(data, library_size)
+cpm_to_counts(data, library_size, size_factors = NULL)
 }
 \arguments{
 \item{data}{a matrix or matrix-like object where rows are genes and columns
@@ -12,9 +12,10 @@ are samples. All values in \code{data} should be >= 0.}
 
 \item{library_size}{a numeric vector describing the library size of each
 sample in \code{data}. The length of \code{library_size} must match the number of
-columns in \code{data}. Typically library size is the sum of all counts in a
-sample, but this could also be modified with TMM or other size factors as
-well.}
+columns in \code{data}.}
+
+\item{size_factors}{(optional) a numeric vector of additional size factors to
+include in the library size, for example TMM factors. Defaults to \code{NULL}.}
 }
 \value{
 an object the same type and shape as \code{data} where CPM values have

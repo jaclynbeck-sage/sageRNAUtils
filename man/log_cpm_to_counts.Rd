@@ -4,7 +4,7 @@
 \alias{log_cpm_to_counts}
 \title{Convert log2-CPM Normalized Values Back to Counts}
 \usage{
-log_cpm_to_counts(data, library_size, pseudocount = 0.5)
+log_cpm_to_counts(data, library_size, size_factors = NULL, pseudocount = 0.5)
 }
 \arguments{
 \item{data}{a matrix or matrix-like object where rows are genes and columns
@@ -13,9 +13,10 @@ as in \code{\link[=simple_lognorm]{simple_lognorm()}}.}
 
 \item{library_size}{a numeric vector describing the library size of each
 sample in \code{data}. The length of \code{library_size} must match the number of
-columns in \code{data}. Typically library size is the sum of all counts in a
-sample, but this could also be modified with TMM or other size factors as
-well.}
+columns in \code{data}.}
+
+\item{size_factors}{(optional) a numeric vector of additional size factors to
+include in the library size, for example TMM factors. Defaults to \code{NULL}.}
 
 \item{pseudocount}{The pseudocount that was used in the original call to
 \code{\link[=simple_lognorm]{simple_lognorm()}}. Defaults to 0.5.}
