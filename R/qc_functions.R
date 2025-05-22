@@ -304,7 +304,6 @@ find_pca_outliers_by_group <- function(data, pca_group,
       meta_group <- metadata[pca_group == grp, ]
     }
 
-    # TODO check for small number of samples before running
     find_pca_outliers(data_group,
                       n_sds = n_sds,
                       metadata = meta_group,
