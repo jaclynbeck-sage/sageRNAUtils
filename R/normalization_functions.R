@@ -160,7 +160,13 @@ cpm_to_counts <- function(data, library_size, size_factors = NULL) {
 #'                              pseudocount = 1)
 #' all(counts == counts2)
 log_cpm_to_counts <- function(data, library_size, size_factors = NULL, pseudocount = 0.5) {
-  cpm_to_counts(2^data - pseudocount, library_size = library_size, size_factors = size_factors)
+  if (pseudocount == 1 & inherits(data, "sparseMatrix")) {
+    sparse_data <- data
+    sparse_data@x <- 2^sparse_data@x - pseudocount
+    cpm_to_counts(sparse_data, library_size = library_size, size_factors = size_factors)
+  } else {
+    cpm_to_counts(2^data - pseudocount, library_size = library_size, size_factors = size_factors)
+  }
 }
 
 
@@ -219,6 +225,10 @@ log_cpm_to_counts <- function(data, library_size, size_factors = NULL, pseudocou
 #'                                       size_factors = dge$samples$norm.factors)
 #' all(new_counts == counts)
 edger_log_cpm_to_counts <- function(data, library_size, size_factors = NULL, prior_count = 2) {
+  if (length(library_size) != ncol(data)) {
+    stop("The length of 'library_size' doesn't match the number of columns in 'data'.")
+  }
+
   if (!is.null(size_factors)) {
     if (length(size_factors) != length(library_size)) {
       stop("'library_size' and 'size_factors' are not the same length.")
