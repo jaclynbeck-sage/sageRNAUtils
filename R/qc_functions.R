@@ -255,7 +255,7 @@ load_fastqc_output <- function(files, sample_names, ...) {
 #' If a group was too small, it will not have an entry in `group_results`.
 #' @export
 #'
-#' @seealso [find_pca_outliers()], [simple_lognorm()],
+#' @seealso [find_pca_outliers()], [simple_log2norm()],
 #'   [plot_pca_outliers()], [get_gc_content_biomart()], [get_gc_content_gtf()]
 #'
 #' @examples
@@ -357,7 +357,7 @@ find_pca_outliers_by_group <- function(data, pca_group,
 #'
 #' @param data a matrix, data.frame, or matrix-like object of expression data
 #'   where rows are genes and columns are samples. Data should be normalized and
-#'   on the log or log2 scale, for example as returned by [simple_lognorm()].
+#'   on the log or log2 scale, for example as returned by [simple_log2norm()].
 #' @param n_sds (optional) samples will be labeled as outliers if they are
 #'   outside the ellipse defined by `radius1 = n_sds * sd(PC1)` and `radius2 =
 #'   n_sds * sd(PC2)`. Defaults to 4.
@@ -388,7 +388,7 @@ find_pca_outliers_by_group <- function(data, pca_group,
 #' [plot_pca_outliers()].
 #' @export
 #'
-#' @seealso [find_pca_outliers_by_group()], [simple_lognorm()],
+#' @seealso [find_pca_outliers_by_group()], [simple_log2norm()],
 #'   [plot_pca_outliers()], [get_gc_content_biomart()], [get_gc_content_gtf()]
 #'
 #' @examples
@@ -560,7 +560,7 @@ plot_pca_outliers <- function(pca_df, pc1_threshold, pc2_threshold,
 #' @param data a matrix, data.frame, or matrix-like object of expression data
 #'   where rows are genes and columns are samples. The rownames of data should
 #'   either be gene symbols or Ensembl IDs. Data should be normalized and on the
-#'   log or log2 scale, for example as returned by [simple_lognorm()].
+#'   log or log2 scale, for example as returned by [simple_log2norm()].
 #' @param sample_colname (optional) a character string naming the column in
 #'   `metadata` that contains sample labels. Defaults to "specimenID".
 #' @param sex_colname (optional) a character string naming the column in
@@ -585,7 +585,7 @@ plot_pca_outliers <- function(pca_df, pc1_threshold, pc2_threshold,
 #' to view the results.
 #' @export
 #'
-#' @seealso [plot_sex_mismatch_results()], [simple_lognorm()]
+#' @seealso [plot_sex_mismatch_results()], [simple_log2norm()]
 #'
 #' @examples
 #' \dontrun{

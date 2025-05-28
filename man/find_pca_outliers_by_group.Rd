@@ -17,7 +17,7 @@ find_pca_outliers_by_group(
 \arguments{
 \item{data}{a matrix, data.frame, or matrix-like object of expression data
 where rows are genes and columns are samples. Data should be normalized and
-on the log or log2 scale, for example as returned by \code{\link[=simple_lognorm]{simple_lognorm()}}.}
+on the log or log2 scale, for example as returned by \code{\link[=simple_log2norm]{simple_log2norm()}}.}
 
 \item{pca_group}{either a vector or a single character string describing the
 groups of samples. If \code{metadata} is provided, \code{pca_group} should be the
@@ -74,6 +74,6 @@ input, filtering, and plotting.
 }
 }
 \seealso{
-\code{\link[=find_pca_outliers]{find_pca_outliers()}}, \code{\link[=simple_lognorm]{simple_lognorm()}},
+\code{\link[=find_pca_outliers]{find_pca_outliers()}}, \code{\link[=simple_log2norm]{simple_log2norm()}},
 \code{\link[=plot_pca_outliers]{plot_pca_outliers()}}, \code{\link[=get_gc_content_biomart]{get_gc_content_biomart()}}, \code{\link[=get_gc_content_gtf]{get_gc_content_gtf()}}
 }

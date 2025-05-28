@@ -18,7 +18,7 @@
 #'   to CPM
 #' @export
 #'
-#' @seealso [simple_lognorm()]
+#' @seealso [simple_log2norm()]
 #'
 #' @examples
 #' counts <- round(matrix(runif(1000, min = 0, max = 100), ncol = 10))
@@ -75,8 +75,8 @@ simple_cpm <- function(data, library_size = NULL, size_factors = NULL) {
 #' # Example using a pseudocount of 1, which makes all log2 values positive and
 #' # count values of 0 remain 0.
 #' counts <- round(matrix(runif(1000, min = 0, max = 100), ncol = 10))
-#' log_data <- simple_lognorm(counts, pseudocount = 1)
-simple_lognorm <- function(data, library_size = NULL, size_factors = NULL, pseudocount = 0.5) {
+#' log_data <- simple_log2norm(counts, pseudocount = 1)
+simple_log2norm <- function(data, library_size = NULL, size_factors = NULL, pseudocount = 0.5) {
   if (pseudocount == 1 & inherits(data, "sparseMatrix")) {
     # Preserves sparsity
     sparse_data <- simple_cpm(data, library_size = library_size,
@@ -133,33 +133,33 @@ cpm_to_counts <- function(data, library_size, size_factors = NULL) {
 
 #' Convert log2-CPM Normalized Values Back to Counts
 #'
-#' Reverses the operation performed by [simple_lognorm()] to convert log2-CPM
+#' Reverses the operation performed by [simple_log2norm()] to convert log2-CPM
 #' normalized values back to integer counts.
 #'
 #' @inheritParams cpm_to_counts
 #' @param data a matrix or matrix-like object where rows are genes and columns
 #'   are samples. All values in `data` should on the log2 scale and normalized
-#'   as in [simple_lognorm()].
+#'   as in [simple_log2norm()].
 #' @param pseudocount The pseudocount that was used in the original call to
-#'   [simple_lognorm()]. Defaults to 0.5.
+#'   [simple_log2norm()]. Defaults to 0.5.
 #'
 #' @return an object the same type and shape as `data` where log2-CPM values
 #'   have been converted back to integer counts. Any non-integer values will be
 #'   rounded off.
 #' @export
-#' @seealso [simple_lognorm()], [cpm_to_counts()]
+#' @seealso [simple_log2norm()], [cpm_to_counts()]
 #'
 #' @examples
 #' # Make a matrix of normalized data
 #' counts <- round(matrix(runif(1000, min = 0, max = 100), ncol = 10))
-#' log_data <- simple_lognorm(counts, pseudocount = 1)
+#' log_data <- simple_log2norm(counts, pseudocount = 1)
 #'
 #' # Reverse the operation
-#' counts2 <- log_cpm_to_counts(log_data,
-#'                              library_size = colSums(counts),
-#'                              pseudocount = 1)
+#' counts2 <- log2_cpm_to_counts(log_data,
+#'                               library_size = colSums(counts),
+#'                               pseudocount = 1)
 #' all(counts == counts2)
-log_cpm_to_counts <- function(data, library_size, size_factors = NULL, pseudocount = 0.5) {
+log2_cpm_to_counts <- function(data, library_size, size_factors = NULL, pseudocount = 0.5) {
   if (pseudocount == 1 & inherits(data, "sparseMatrix")) {
     sparse_data <- data
     sparse_data@x <- 2^sparse_data@x - pseudocount
@@ -213,18 +213,18 @@ log_cpm_to_counts <- function(data, library_size, size_factors = NULL, pseudocou
 #' @examples
 #' counts <- round(matrix(runif(1000, min = 0, max = 100), ncol = 10))
 #' log_cpm <- edgeR::cpm(counts, log = TRUE)
-#' new_counts <- edger_log_cpm_to_counts(log_cpm, library_size = colSums(counts))
+#' new_counts <- edger_log2_cpm_to_counts(log_cpm, library_size = colSums(counts))
 #' all(new_counts == counts)
 #'
 #' # With size factors
 #' dge <- edgeR::DGEList(counts)
 #' dge <- edgeR::normLibSizes(dge)
 #' log_cpm <- edgeR::cpm(dge, log = TRUE)
-#' new_counts <- edger_log_cpm_to_counts(log_cpm,
-#'                                       library_size = dge$samples$lib.size,
-#'                                       size_factors = dge$samples$norm.factors)
+#' new_counts <- edger_log2_cpm_to_counts(log_cpm,
+#'                                        library_size = dge$samples$lib.size,
+#'                                        size_factors = dge$samples$norm.factors)
 #' all(new_counts == counts)
-edger_log_cpm_to_counts <- function(data, library_size, size_factors = NULL, prior_count = 2) {
+edger_log2_cpm_to_counts <- function(data, library_size, size_factors = NULL, prior_count = 2) {
   if (length(library_size) != ncol(data)) {
     stop("The length of 'library_size' doesn't match the number of columns in 'data'.")
   }

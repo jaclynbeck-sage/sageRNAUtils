@@ -39,5 +39,5 @@ tmm <- edgeR::normLibSizes(counts)
 cpm_data <- simple_cpm(counts, size_factors = tmm)
 }
 \seealso{
-\code{\link[=simple_lognorm]{simple_lognorm()}}
+\code{\link[=simple_log2norm]{simple_log2norm()}}
 }

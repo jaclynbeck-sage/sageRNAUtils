@@ -15,7 +15,7 @@ find_pca_outliers(
 \arguments{
 \item{data}{a matrix, data.frame, or matrix-like object of expression data
 where rows are genes and columns are samples. Data should be normalized and
-on the log or log2 scale, for example as returned by \code{\link[=simple_lognorm]{simple_lognorm()}}.}
+on the log or log2 scale, for example as returned by \code{\link[=simple_log2norm]{simple_log2norm()}}.}
 
 \item{n_sds}{(optional) samples will be labeled as outliers if they are
 outside the ellipse defined by \code{radius1 = n_sds * sd(PC1)} and \code{radius2 = n_sds * sd(PC2)}. Defaults to 4.}
@@ -84,6 +84,6 @@ columns with \link[ggplot2:aes]{ggplot2::aes} specifications like color and shap
 }
 }
 \seealso{
-\code{\link[=find_pca_outliers_by_group]{find_pca_outliers_by_group()}}, \code{\link[=simple_lognorm]{simple_lognorm()}},
+\code{\link[=find_pca_outliers_by_group]{find_pca_outliers_by_group()}}, \code{\link[=simple_log2norm]{simple_log2norm()}},
 \code{\link[=plot_pca_outliers]{plot_pca_outliers()}}, \code{\link[=get_gc_content_biomart]{get_gc_content_biomart()}}, \code{\link[=get_gc_content_gtf]{get_gc_content_gtf()}}
 }

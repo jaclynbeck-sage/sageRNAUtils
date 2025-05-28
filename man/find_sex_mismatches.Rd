@@ -20,7 +20,7 @@ either "male" or "female", all lowercase.}
 \item{data}{a matrix, data.frame, or matrix-like object of expression data
 where rows are genes and columns are samples. The rownames of data should
 either be gene symbols or Ensembl IDs. Data should be normalized and on the
-log or log2 scale, for example as returned by \code{\link[=simple_lognorm]{simple_lognorm()}}.}
+log or log2 scale, for example as returned by \code{\link[=simple_log2norm]{simple_log2norm()}}.}
 
 \item{sample_colname}{(optional) a character string naming the column in
 \code{metadata} that contains sample labels. Defaults to "specimenID".}
@@ -65,5 +65,5 @@ and KDM5D, which were determined to be good markers for sex in \href{https://www
 }
 }
 \seealso{
-\code{\link[=plot_sex_mismatch_results]{plot_sex_mismatch_results()}}, \code{\link[=simple_lognorm]{simple_lognorm()}}
+\code{\link[=plot_sex_mismatch_results]{plot_sex_mismatch_results()}}, \code{\link[=simple_log2norm]{simple_log2norm()}}
 }
