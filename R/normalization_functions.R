@@ -49,7 +49,13 @@ simple_cpm <- function(data, library_size = NULL, size_factors = NULL) {
     library_size <- library_size * size_factors
   }
 
-  sweep(data, 2, library_size, "/") * 1e6
+  # Preserve sparsity for sparse matrices
+  if (inherits(data, "sparseMatrix")) {
+    data@x <- as.numeric(data@x / rep(library_size / 1e6, diff(data@p)))
+    return(data)
+  } else {
+    return(sweep(data, 2, library_size, "/") * 1e6)
+  }
 }
 
 
