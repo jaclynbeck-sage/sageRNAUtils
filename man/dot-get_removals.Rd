@@ -5,7 +5,7 @@
 \title{Get Which Variables to Remove Based on Correlation}
 \usage{
 .get_removals(
-  cor_mat,
+  r2_mat,
   na_vars,
   R2_threshold = 0.5,
   removed = c(),
@@ -13,9 +13,8 @@
 )
 }
 \arguments{
-\item{cor_mat}{a matrix of correlation (or other association-like) values,
-which must have row and column names. This matrix does not need to be
-square.}
+\item{r2_mat}{a matrix of R^2 values (or other positive association-like
+values), which must have row and column names. This matrix must be square.}
 
 \item{na_vars}{a one-row data.frame where the columns are the covariates and
 the values are the number of \code{NA} values in each column.}
@@ -42,8 +41,4 @@ removed. May also be an empty vector.
 This is a helper function for \code{\link[=remove_correlated_covariates]{remove_correlated_covariates()}} to decide
 which variable in each highly-correlated pair of covariates should get
 removed.
-}
-\examples{
-\dontrun{
-}
 }

@@ -107,6 +107,8 @@ remove_correlated_covariates <- function(data,
   if (ncol(data_num) > 1) {
     r2_mat <- stats::cor(data_num, use = "na.or.complete")^2
     to_remove <- .get_removals(r2_mat, na_vars, R2_threshold, to_remove, always_keep)
+  } else {
+    r2_mat <- matrix()
   }
 
   # Cramer's V between categorical values
@@ -120,6 +122,8 @@ remove_correlated_covariates <- function(data,
     cv_mat <- cv_mat^2 # Similar to R^2
 
     to_remove <- .get_removals(cv_mat, na_vars, R2_threshold, to_remove, always_keep)
+  } else {
+    cv_mat <- matrix()
   }
 
   # R^2 between categorical and numerical values via linear fit, excluding
@@ -127,13 +131,22 @@ remove_correlated_covariates <- function(data,
   data_num <- data_num |> select(-any_of(to_remove))
   data_cat <- data_cat |> select(-any_of(to_remove), -any_of(mixed_effects))
 
-  if (ncol(data_num) > 1 && ncol(data_cat) > 1) {
+  if (ncol(data_num) > 0 && ncol(data_cat) > 0) {
     lm_mat <- sapply(colnames(data_cat), function(col_cat) {
       sapply(colnames(data_num), function(col_num) {
         fit <- stats::lm(data[, col_num] ~ data[, col_cat])
         r2 <- summary(fit)$r.squared
       })
     })
+
+    # Make lm_mat symmetrical and insert correlation/cv values in the empty
+    # parts of the matrix. This works even if r2_mat or cv_mat are empty.
+    lm_mat <- .make_symmetrical(lm_mat)
+    cor_vars <- intersect(rownames(lm_mat), rownames(r2_mat))
+    cv_vars <- intersect(rownames(lm_mat), rownames(cv_mat))
+
+    lm_mat[cor_vars, cor_vars] <- r2_mat[cor_vars, cor_vars]
+    lm_mat[cv_vars, cv_vars] <- cv_mat[cv_vars, cv_vars]
 
     to_remove <- .get_removals(lm_mat, na_vars, R2_threshold, to_remove, always_keep)
   }
@@ -152,9 +165,8 @@ remove_correlated_covariates <- function(data,
 #' which variable in each highly-correlated pair of covariates should get
 #' removed.
 #'
-#' @param cor_mat a matrix of correlation (or other association-like) values,
-#'   which must have row and column names. This matrix does not need to be
-#'   square.
+#' @param r2_mat a matrix of R^2 values (or other positive association-like
+#'   values), which must have row and column names. This matrix must be square.
 #' @param na_vars a one-row data.frame where the columns are the covariates and
 #'   the values are the number of `NA` values in each column.
 #' @param removed (optional) a string or character vector of variables that have
@@ -166,23 +178,21 @@ remove_correlated_covariates <- function(data,
 #'
 #' @return a character vector with the names of the columns that should be
 #'   removed. May also be an empty vector.
-#'
-#' @examples
-#' \dontrun{
-#' }
-.get_removals <- function(cor_mat, na_vars, R2_threshold = 0.5,
+.get_removals <- function(r2_mat, na_vars, R2_threshold = 0.5,
                          removed = c(), always_keep = c()) {
-  if (nrow(cor_mat) == ncol(cor_mat) &&
-      all(rownames(cor_mat) == colnames(cor_mat))) {
-    diag(cor_mat) <- NA # Remove self-correlation
+  if (!(nrow(r2_mat) == ncol(r2_mat)) ||
+      !(all(rownames(r2_mat) == colnames(r2_mat))) ||
+      !isSymmetric(r2_mat)) {
+    stop("`r2_mat` is not square or symmetrical")
   }
 
-  r2_melt <- cor_mat
+  # Remove self-correlation
+  diag(r2_mat) <- NA
 
-  if (nrow(cor_mat) == ncol(cor_mat) &&
-      all(rownames(cor_mat) == colnames(cor_mat))) {
-    r2_melt[upper.tri(r2_melt, diag = TRUE)] <- 0  # Avoids picking up both (a vs b) and (b vs a)
-  }
+  r2_melt <- r2_mat
+
+  # Avoids picking up both (a vs b) and (b vs a)
+  r2_melt[upper.tri(r2_melt, diag = TRUE)] <- 0
 
   r2_melt <- r2_melt |>
     as.data.frame() |>
@@ -214,8 +224,8 @@ remove_correlated_covariates <- function(data,
                    vars[which.max(na_vars[1, vars])])
     } else {
       # No NAs, no variables are in `always_keep` or `removed`
-      cur_vars <- setdiff(rownames(cor_mat), removed)
-      mean_r2 <- rowMeans(cor_mat[cur_vars, cur_vars], na.rm = TRUE)
+      cur_vars <- setdiff(rownames(r2_mat), removed)
+      mean_r2 <- rowMeans(r2_mat[cur_vars, cur_vars], na.rm = TRUE)
 
       # Remove the variable with the largest mean R^2 with the other remaining variables
       removed <- c(removed,
@@ -227,3 +237,23 @@ remove_correlated_covariates <- function(data,
 }
 
 
+.make_symmetrical <- function(mat) {
+  new_names <- c(rownames(mat), colnames(mat))
+
+  if (length(unique(new_names)) != length(new_names)) {
+    stop("row names of `mat` are not distinct from col names")
+  }
+
+  new_mat <- matrix(NA,
+                    nrow = nrow(mat) + ncol(mat),
+                    ncol = nrow(mat) + ncol(mat),
+                    dimnames = list(new_names, new_names))
+
+  # Insert mat at the right rows and columns
+  new_mat[rownames(mat), colnames(mat)] <- mat
+
+  # Insert the transpose at the right rows and columns
+  new_mat[colnames(mat), rownames(mat)] <- t(mat)
+
+  return(new_mat)
+}
