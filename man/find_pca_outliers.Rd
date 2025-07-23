@@ -7,8 +7,10 @@
 find_pca_outliers(
   data,
   n_sds = 4,
+  n_pcs = 3,
   metadata = NULL,
   sample_colname = "specimenID",
+  cutoff_method = "default",
   gene_info = NULL
 )
 }
@@ -18,7 +20,10 @@ where rows are genes and columns are samples. Data should be normalized and
 on the log or log2 scale, for example as returned by \code{\link[=simple_log2norm]{simple_log2norm()}}.}
 
 \item{n_sds}{(optional) samples will be labeled as outliers if they are
-outside the ellipse defined by \code{radius1 = n_sds * sd(PC1)} and \code{radius2 = n_sds * sd(PC2)}. Defaults to 4.}
+outside \code{n_sds} standard deviations from any PC. Defaults to 4.}
+
+\item{n_pcs}{(optional) how many principal components to use for outlier
+detection. Typical values are 2 or 3. Defaults to 3.}
 
 \item{metadata}{(optional) a data.frame where rows are samples and columns
 are covariates. If supplied, it must contain, at minimum, a column with
@@ -31,6 +36,12 @@ information.}
 string naming the column in \code{metadata} that contains sample labels. Ignored
 if \code{metadata} is \code{NULL}. Defaults to "specimenID".}
 
+\item{cutoff_method}{(optional) either \code{default} or \code{ellipse}. If \code{default},
+samples are labeled as outliers if they are > \code{n_sds * sd(PC)} or < `-n_sds
+\itemize{
+\item sd(PC)\verb{for any PC up to}n_pcs\verb{. If }ellipse\verb{, samples are labeled as   outliers if they are outside an ellipse (or ellipsoid, if }n_pcs\verb{> 2)   defined by}radius1 = n_sds * sd(PC1)\verb{, }radius2 = n_sds * sd(PC2)\verb{, ...,   }radiusN = n_sds * sd(PC_N)\verb{, up to }n_pcs`.
+}}
+
 \item{gene_info}{(optional) a data.frame where rows are genes and columns are
 variables that provide metadata about each gene. If provided, the PCA will
 run using only protein-coding autosomal genes, which are extracted from
@@ -42,20 +53,21 @@ a named list with the following items:
 
 \item{pca_df}{the \verb{$x} data.frame returned by \code{prcomp}, plus any columns from
 \code{metadata} if it was supplied}
-\item{pc1_threshold, pc2_threshold}{the calculated radii of the ellipse for
-PC1 and PC2}
+\item{thresholds}{a named numeric vector of length \code{n_pcs} with the
+thresholds used as cutoffs}
 \item{outliers}{a character vector of sample names that were marked as outliers}
 
-The first three items in the list can be used to plot the results with
+The first two items in the list can be used to plot the results with
 \code{\link[=plot_pca_outliers]{plot_pca_outliers()}}.
 }
 \description{
 Runs PCA on normalized data and detects outliers that are a certain number of
-standard deviations away from the mean on either PC1 or PC2.
+standard deviations away from the mean on any PC from 1:n_pcs.
 }
 \details{
 This function runs \code{prcomp} on the provided data and marks samples as
-outliers if they fall outside an ellipse defined by \code{radius1 = n_sds * sd(PC1)} and \code{radius2 = n_sds * sd(PC2)}.
+outliers if they fall outside +/- n_sds * sd(PC) for any PC from 1:n_pcs. By
+default, n_pcs = 3.
 
 \strong{Gene filtering}
 

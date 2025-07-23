@@ -323,15 +323,96 @@ find_pca_outliers_by_group <- function(data, pca_group,
 }
 
 
+#' Plot PCA Outlier Detection Results
+#'
+#' Plots PC1 vs PC2 and marks outlier samples as found by [find_pca_outliers()].
+#' It also draws the ellipse that was used to determine outliers.
+#'
+#' @param pca_df a data.frame where rows are samples and columns are PCs as
+#'   output by [prcomp()], plus any additional covariates added by
+#'   [find_pca_outliers()].
+#' @param pc1_threshold the outlier threshold for PC1, which is calculated by
+#'   [find_pca_outliers()] as `n_sds * sd(PC1)`.
+#' @param pc2_threshold the outlier threshold for PC2, which is calculated by
+#'   [find_pca_outliers()] as `n_sds * sd(PC2)`.
+#' @param print_plot (optional) whether to print the plot out before returning,
+#'   or not. Defaults to TRUE.
+#' @param color (optional) the name of the column in `pca_df` to use as the
+#'   "color" in the [ggplot2::aes()] specification. If `color` is `NULL` or is
+#'   not a valid column name, all points will be black instead. Defaults to
+#'   `is_outlier`.
+#' @param ... (optional) additional [ggplot2::aes] specifications to pass to the
+#'   plot, in the format <aes_spec> = "column_name_as_string". For example,
+#'   `shape = "diagnosis"` or `size = "quantity"`.
+#'
+#' @return a [ggplot2::ggplot] object with the built plot.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' }
+plot_pca_outliers_ellipse <- function(pca_df, pc1_threshold, pc2_threshold,
+                                      print_plot = TRUE,
+                                      color = "is_outlier", ...) {
+  # TODO add ggrepel labels and make outlier points larger. Find a way to get
+  # title information
+  # Formula for an ellipse is (x^2 / a^2) + (y^2 / b^2) = 1, so
+  # y = +/- sqrt((1 - x^2 / a^2) * b^2)
+  ellipse_points <- function(axis_A, axis_B) {
+    x <- seq(from = -axis_A, to = axis_A, length.out = 1000)
+    y <- sqrt((1 - x^2 / axis_A^2) * axis_B^2)
+
+    data.frame(x = c(x, rev(x)), y = c(y, rev(-y)))
+  }
+
+  ellipse_df <- ellipse_points(pc1_threshold, pc2_threshold)
+
+  # The lines below will auto-inject "..." into the aes() statement
+  aes_opts <- lapply(list(...), function(X) {
+    if (X %in% colnames(pca_df)) {
+      return(rlang::sym(X))
+    } else {
+      message(paste0("\"", X, "\" is not a valid column in `pca_df`. ",
+                     "It will not be used in the plot."))
+    }
+  })
+
+  if (!is.null(color)) {
+    if (color %in% colnames(pca_df)) {
+      aes_opts$color = ifelse(is.character(color), rlang::sym(color), color)
+    } else {
+      message(paste0("\"", color, "\" is not a valid column in `pca_df`. ",
+                     "No color aes will be used."))
+    }
+  }
+
+  plt <- ggplot2::ggplot(pca_df,
+                         ggplot2::aes(x = PC1, y = PC2, !!!aes_opts)) +
+    ggplot2::geom_point(size = 0.8) +
+    ggplot2::geom_path(data = ellipse_df,
+                       ggplot2::aes(x = x, y = y),
+                       linetype = "dotdash",
+                       color = "blue",
+                       inherit.aes = FALSE) +
+    ggplot2::theme_bw()
+
+  if (print_plot) {
+    print(plt)
+  }
+
+  return(plt)
+}
+
+
 #' Find Outliers by PCA
 #'
 #' Runs PCA on normalized data and detects outliers that are a certain number of
-#' standard deviations away from the mean on either PC1 or PC2.
+#' standard deviations away from the mean on any PC from 1:n_pcs.
 #'
 #' @details
 #' This function runs `prcomp` on the provided data and marks samples as
-#' outliers if they fall outside an ellipse defined by `radius1 = n_sds *
-#' sd(PC1)` and `radius2 = n_sds * sd(PC2)`.
+#' outliers if they fall outside +/- n_sds * sd(PC) for any PC from 1:n_pcs. By
+#' default, n_pcs = 3.
 #'
 #' **Gene filtering**
 #'
@@ -359,8 +440,9 @@ find_pca_outliers_by_group <- function(data, pca_group,
 #'   where rows are genes and columns are samples. Data should be normalized and
 #'   on the log or log2 scale, for example as returned by [simple_log2norm()].
 #' @param n_sds (optional) samples will be labeled as outliers if they are
-#'   outside the ellipse defined by `radius1 = n_sds * sd(PC1)` and `radius2 =
-#'   n_sds * sd(PC2)`. Defaults to 4.
+#'   outside `n_sds` standard deviations from any PC. Defaults to 4.
+#' @param n_pcs (optional) how many principal components to use for outlier
+#'   detection. Typical values are 2 or 3. Defaults to 3.
 #' @param metadata (optional) a data.frame where rows are samples and columns
 #'   are covariates. If supplied, it must contain, at minimum, a column with
 #'   sample IDs, and any additional columns will be merged into the result to
@@ -370,6 +452,12 @@ find_pca_outliers_by_group <- function(data, pca_group,
 #' @param sample_colname (optional) if `metadata` is provided, a character
 #'   string naming the column in `metadata` that contains sample labels. Ignored
 #'   if `metadata` is `NULL`. Defaults to "specimenID".
+#' @param cutoff_method (optional) either `default` or `ellipse`. If `default`,
+#'   samples are labeled as outliers if they are > `n_sds * sd(PC)` or < `-n_sds
+#'   * sd(PC)` for any PC up to `n_pcs`. If `ellipse`, samples are labeled as
+#'   outliers if they are outside an ellipse (or ellipsoid, if `n_pcs` > 2)
+#'   defined by `radius1 = n_sds * sd(PC1)`, `radius2 = n_sds * sd(PC2)`, ...,
+#'   `radiusN = n_sds * sd(PC_N)`, up to `n_pcs`.
 #' @param gene_info (optional) a data.frame where rows are genes and columns are
 #'   variables that provide metadata about each gene. If provided, the PCA will
 #'   run using only protein-coding autosomal genes, which are extracted from
@@ -380,11 +468,11 @@ find_pca_outliers_by_group <- function(data, pca_group,
 #'
 #' \item{pca_df}{the `$x` data.frame returned by `prcomp`, plus any columns from
 #' `metadata` if it was supplied}
-#' \item{pc1_threshold, pc2_threshold}{the calculated radii of the ellipse for
-#'  PC1 and PC2}
+#' \item{thresholds}{a named numeric vector of length `n_pcs` with the
+#' thresholds used as cutoffs}
 #' \item{outliers}{a character vector of sample names that were marked as outliers}
 #'
-#' The first three items in the list can be used to plot the results with
+#' The first two items in the list can be used to plot the results with
 #' [plot_pca_outliers()].
 #' @export
 #'
@@ -396,8 +484,10 @@ find_pca_outliers_by_group <- function(data, pca_group,
 #' }
 find_pca_outliers <- function(data,
                               n_sds = 4,
+                              n_pcs = 3,
                               metadata = NULL,
                               sample_colname = "specimenID",
+                              cutoff_method = "default",
                               gene_info = NULL) {
 
   # If gene biotype information is provided, use protein-coding autosomal genes
@@ -442,18 +532,38 @@ find_pca_outliers <- function(data,
     pca_df$sample <- rownames(pca_df)
   }
 
-  pc1_thresh <- stats::sd(pca_df$PC1) * n_sds
-  pc2_thresh <- stats::sd(pca_df$PC2) * n_sds
+  pc_names <- paste0("PC", 1:n_pcs)
 
-  in_ellipse <- (pca_df$PC1^2 / pc1_thresh^2) + (pca_df$PC2^2 / pc2_thresh^2)
+  thresholds <- sapply(pc_names, function(pc) {
+    stats::sd(pca_df[, pc]) * n_sds
+  })
 
-  pca_df$is_outlier <- in_ellipse > 1
+  if (cutoff_method == "default") {
+    # Check that each PC value is within its threshold, for each PC separately
+    in_bounds <- lapply(pc_names, function(pc) {
+      abs(pca_df[, pc]) < thresholds[pc]
+    }) |>
+      as.data.frame() |>
+      rowSums() == n_pcs # All values should be true across the row
+
+  } else if (cutoff_method == "ellipse") {
+    # Check that each point is inside an ellipse (or ellipsoid, if n_pcs > 2),
+    # where each radius is one of the thresholds.
+    # The formula for an ellipse/ellipsoid is (x^2 / a^2) + (y^2 / b^2) + ... = 1,
+    # where (x, y, ...) are PCs and (a, b, ...) are radii defined by n_sds * sd(PC).
+    in_bounds <- lapply(pc_names, function(pc) {
+      pca_df[, pc]^2 / thresholds[pc]^2
+    }) |>
+      as.data.frame() |>
+      rowSums() <= 1
+  }
+
+  pca_df$is_outlier <- !in_bounds
   outliers <- pca_df[, sample_colname][pca_df$is_outlier]
 
   return(list(
     pca_df = pca_df,
-    pc1_threshold = pc1_thresh,
-    pc2_threshold = pc2_thresh,
+    thresholds = thresholds,
     outliers = outliers
   ))
 }
@@ -462,15 +572,14 @@ find_pca_outliers <- function(data,
 #' Plot PCA Outlier Detection Results
 #'
 #' Plots PC1 vs PC2 and marks outlier samples as found by [find_pca_outliers()].
-#' It also draws the ellipse that was used to determine outliers.
+#' TODO: If more than two PCs were used, this function will plot a grid of PCx vs PCy,
+#' up to 5 PCs.
 #'
 #' @param pca_df a data.frame where rows are samples and columns are PCs as
 #'   output by [prcomp()], plus any additional covariates added by
 #'   [find_pca_outliers()].
-#' @param pc1_threshold the outlier threshold for PC1, which is calculated by
-#'   [find_pca_outliers()] as `n_sds * sd(PC1)`.
-#' @param pc2_threshold the outlier threshold for PC2, which is calculated by
-#'   [find_pca_outliers()] as `n_sds * sd(PC2)`.
+#' @param thresholds a named vector of outlier thresholds for each PC used in
+#'   outlier detection, calculated in [find_pca_outliers()] as `n_sds * sd(PC)`.
 #' @param print_plot (optional) whether to print the plot out before returning,
 #'   or not. Defaults to TRUE.
 #' @param color (optional) the name of the column in `pca_df` to use as the
@@ -487,22 +596,11 @@ find_pca_outliers <- function(data,
 #' @examples
 #' \dontrun{
 #' }
-plot_pca_outliers <- function(pca_df, pc1_threshold, pc2_threshold,
+plot_pca_outliers <- function(pca_df, thresholds,
                               print_plot = TRUE,
                               color = "is_outlier", ...) {
   # TODO add ggrepel labels and make outlier points larger. Find a way to get
   # title information
-  # Formula for an ellipse is (x^2 / a^2) + (y^2 / b^2) = 1, so
-  # y = +/- sqrt((1 - x^2 / a^2) * b^2)
-  ellipse_points <- function(axis_A, axis_B) {
-    x <- seq(from = -axis_A, to = axis_A, length.out = 1000)
-    y <- sqrt((1 - x^2 / axis_A^2) * axis_B^2)
-
-    data.frame(x = c(x, rev(x)), y = c(y, rev(-y)))
-  }
-
-  ellipse_df <- ellipse_points(pc1_threshold, pc2_threshold)
-
   # The lines below will auto-inject "..." into the aes() statement
   aes_opts <- lapply(list(...), function(X) {
     if (X %in% colnames(pca_df)) {
@@ -525,10 +623,12 @@ plot_pca_outliers <- function(pca_df, pc1_threshold, pc2_threshold,
   plt <- ggplot2::ggplot(pca_df,
                          ggplot2::aes(x = PC1, y = PC2, !!!aes_opts)) +
     ggplot2::geom_point(size = 0.8) +
-    ggplot2::geom_path(data = ellipse_df,
-                       ggplot2::aes(x = x, y = y),
+    ggplot2::geom_rect(ggplot2::aes(xmin = -PC1, xmax = PC1,
+                                    ymin = -PC2, ymax = PC2),
+                       data = as.data.frame(t(thresholds)),
                        linetype = "dotdash",
                        color = "blue",
+                       fill = NA,
                        inherit.aes = FALSE) +
     ggplot2::theme_bw()
 

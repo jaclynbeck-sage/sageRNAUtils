@@ -135,13 +135,13 @@ test_that("find_pca_outliers correctly calculates PCA and thresholds", {
   results <- find_pca_outliers(data)
 
   expected_pca <- prcomp(t(data), center = TRUE, scale. = TRUE)$x
-  expected_thresh1 <- 4 * sd(expected_pca[, 1])
-  expected_thresh2 <- 4 * sd(expected_pca[, 2])
+  expected_thresh <- c("PC1" = 4 * sd(expected_pca[, 1]),
+                       "PC2" = 4 * sd(expected_pca[, 2]),
+                       "PC3" = 4 * sd(expected_pca[, 3]))
 
-  expect_identical(names(results), c("pca_df", "pc1_threshold", "pc2_threshold", "outliers"))
+  expect_identical(names(results), c("pca_df", "thresholds", "outliers"))
   expect_identical(results$pca_df[, colnames(expected_pca)], as.data.frame(expected_pca))
-  expect_identical(results$pc1_threshold, expected_thresh1)
-  expect_identical(results$pc2_threshold, expected_thresh2)
+  expect_identical(results$thresholds, expected_thresh)
 })
 
 test_that("find_pca_outliers finds no outliers with no metadata", {
@@ -149,7 +149,6 @@ test_that("find_pca_outliers finds no outliers with no metadata", {
 
   results <- find_pca_outliers(data)
 
-  expect_identical(names(results), c("pca_df", "pc1_threshold", "pc2_threshold", "outliers"))
   expect_length(results$outliers, 0)
   expect_identical(results$pca_df$sample, colnames(data))
 })
@@ -162,7 +161,6 @@ test_that("find_pca_outliers finds no outliers with metadata with default sample
 
   results <- find_pca_outliers(data, metadata = metadata)
 
-  expect_identical(names(results), c("pca_df", "pc1_threshold", "pc2_threshold", "outliers"))
   expect_length(results$outliers, 0)
   expect_true("specimenID" %in% colnames(results$pca_df))
   expect_identical(sort(results$pca_df$specimenID), sort(colnames(data)))
@@ -173,7 +171,6 @@ test_that("find_pca_outliers finds outliers with no metadata", {
 
   results <- find_pca_outliers(data)
 
-  expect_identical(names(results), c("pca_df", "pc1_threshold", "pc2_threshold", "outliers"))
   expect_length(results$outliers, 2)
   expect_identical(results$pca_df$sample, colnames(data))
   expect_identical(results$outliers, c("sample_out1", "sample_out2"))
@@ -187,7 +184,6 @@ test_that("find_pca_outliers finds outliers with metadata with default sample co
 
   results <- find_pca_outliers(data, metadata = metadata)
 
-  expect_identical(names(results), c("pca_df", "pc1_threshold", "pc2_threshold", "outliers"))
   expect_length(results$outliers, 2)
   expect_true("specimenID" %in% colnames(results$pca_df))
   expect_true("extra_column" %in% colnames(results$pca_df))
@@ -257,11 +253,11 @@ test_that("find_pca_outliers finds no outliers with high n_sds argument", {
 test_that("find_pca_outliers uses genes specified in gene_info", {
   data <- matrix_for_pca_with_outliers()
 
-  # Ensures samples 21 and 22 won't be outliers unless we only use genes 1:10
-  data[11:60, 21:22] <- data[11:60, 19:20]
+  # Ensures samples 51 and 52 won't be outliers unless we only use genes 51:60
+  data[1:50, 51:52] <- data[1:50, 49:50]
 
   gene_info <- data.frame(ensembl_gene_id = paste0("gene", 1:nrow(data)),
-                          gene_biotype = c(rep("protein_coding", 10), rep("non_coding", 50)),
+                          gene_biotype = c(rep("non_coding", 50), rep("protein_coding", 10)),
                           chromosome_name = "2")
 
   results_all <- find_pca_outliers(data)
@@ -443,7 +439,8 @@ test_that("find_pca_outliers_by_group checks for missing samples in pca_group", 
 test_that("find_pca_outliers_by_group ignores groups that are too small", {
   data <- matrix_for_pca_with_groups()
   pca_group <- stringr::str_replace(colnames(data), "_.*", "")
-  pca_group[60:64] <- "small_group" # Removes outliers from group 3
+  g3_start <- which(pca_group == "group3")[1:5]
+  pca_group[g3_start] <- "small_group" # Removes outliers from group 3
 
   expect_message(
     {results <- find_pca_outliers_by_group(data, pca_group = pca_group)},
@@ -470,7 +467,7 @@ test_that("find_pca_outliers_by_group returns empty lists when all groups are to
 })
 
 test_that("find_pca_outliers_by_group uses different min_group_size", {
-  data <- matrix_for_pca_with_groups()[, 1:60] # Makes Group 3 have < 20 samples
+  data <- matrix_for_pca_with_groups()[, 1:121] # Makes Group 3 have 19 samples
   pca_group <- stringr::str_replace(colnames(data), "_.*", "")
 
   expect_message(

@@ -27,7 +27,7 @@ length as the number of columns in \code{data}, where each entry is the group
 assignment of the corresponding sample in \code{data}.}
 
 \item{n_sds}{(optional) samples will be labeled as outliers if they are
-outside the ellipse defined by \code{radius1 = n_sds * sd(PC1)} and \code{radius2 = n_sds * sd(PC2)}. Defaults to 4.}
+outside \code{n_sds} standard deviations from any PC. Defaults to 4.}
 
 \item{metadata}{(optional) a data.frame where rows are samples and columns
 are covariates. If supplied, it must contain, at minimum, a column with

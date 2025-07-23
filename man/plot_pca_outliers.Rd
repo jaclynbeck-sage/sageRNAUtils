@@ -6,8 +6,7 @@
 \usage{
 plot_pca_outliers(
   pca_df,
-  pc1_threshold,
-  pc2_threshold,
+  thresholds,
   print_plot = TRUE,
   color = "is_outlier",
   ...
@@ -18,11 +17,8 @@ plot_pca_outliers(
 output by \code{\link[=prcomp]{prcomp()}}, plus any additional covariates added by
 \code{\link[=find_pca_outliers]{find_pca_outliers()}}.}
 
-\item{pc1_threshold}{the outlier threshold for PC1, which is calculated by
-\code{\link[=find_pca_outliers]{find_pca_outliers()}} as \code{n_sds * sd(PC1)}.}
-
-\item{pc2_threshold}{the outlier threshold for PC2, which is calculated by
-\code{\link[=find_pca_outliers]{find_pca_outliers()}} as \code{n_sds * sd(PC2)}.}
+\item{thresholds}{a named vector of outlier thresholds for each PC used in
+outlier detection, calculated in \code{\link[=find_pca_outliers]{find_pca_outliers()}} as \code{n_sds * sd(PC)}.}
 
 \item{print_plot}{(optional) whether to print the plot out before returning,
 or not. Defaults to TRUE.}
@@ -41,7 +37,8 @@ a \link[ggplot2:ggplot]{ggplot2::ggplot} object with the built plot.
 }
 \description{
 Plots PC1 vs PC2 and marks outlier samples as found by \code{\link[=find_pca_outliers]{find_pca_outliers()}}.
-It also draws the ellipse that was used to determine outliers.
+TODO: If more than two PCs were used, this function will plot a grid of PCx vs PCy,
+up to 5 PCs.
 }
 \examples{
 \dontrun{
