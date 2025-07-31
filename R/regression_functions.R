@@ -66,7 +66,11 @@ remove_unusable_covariates <- function(data, always_keep = c(), verbose = TRUE) 
 #' @param mixed_effects (optional) a string or character vector of columns that
 #'   will be mixed effects in a regression model. These variables are compared
 #'   to other categoricals for potential removal but are not compared with
-#'   numeric variables. Defaults to an empty vector.
+#'   numeric variables, due to fact that mixed variables try to model any
+#'   unwanted clustering of numeric values by group. This effect might result in
+#'   high correlation between the mixed effect and numeric variable, but we
+#'   don't actually want to remove one of those variables if that's the case.
+#'   Defaults to an empty vector.
 #' @param always_keep (optional) a string or character vector of columns that
 #'   should always be kept even if they are highly correlated with another
 #'   variable. In that case, the other variable is removed instead, as long as
@@ -95,61 +99,15 @@ remove_correlated_covariates <- function(data,
   na_vars <- data |>
     summarize(across(everything(), ~sum(is.na(.x))))
 
-  data_num <- data |> select(where(is.numeric), -any_of(id_cols))
-  data_cat <- data |> select(where(is.character),
-                             where(is.factor),
-                             where(is.logical),
-                             -any_of(id_cols))
+  cor_mat <- generalized_correlation(data, exclude_cols = id_cols)
+  r2_mat <- cor_mat^2
 
-  to_remove <- c()
+  # Remove comparison between mixed effects and numeric variables
+  numerics <- data |> select(where(is.numeric)) |> colnames()
+  r2_mat[mixed_effects, numerics] <- NA
+  r2_mat[numerics, mixed_effects] <- NA
 
-  # Correlation between numerical values
-  if (ncol(data_num) > 1) {
-    r2_mat <- stats::cor(data_num, use = "na.or.complete")^2
-    to_remove <- .get_removals(r2_mat, na_vars, R2_threshold, to_remove, always_keep)
-  } else {
-    r2_mat <- matrix()
-  }
-
-  # Cramer's V between categorical values
-  if (ncol(data_cat) > 1) {
-    cv_mat <- sapply(colnames(data_cat), function(col_name1) {
-      sapply(colnames(data_cat), function(col_name2) {
-        table(data_cat[, col_name1], data_cat[, col_name2]) |>
-          DescTools::CramerV()
-      })
-    })
-    cv_mat <- cv_mat^2 # Similar to R^2
-
-    to_remove <- .get_removals(cv_mat, na_vars, R2_threshold, to_remove, always_keep)
-  } else {
-    cv_mat <- matrix()
-  }
-
-  # R^2 between categorical and numerical values via linear fit, excluding
-  # any mixed-effect variables and any variables already getting removed
-  data_num <- data_num |> select(-any_of(to_remove))
-  data_cat <- data_cat |> select(-any_of(to_remove), -any_of(mixed_effects))
-
-  if (ncol(data_num) > 0 && ncol(data_cat) > 0) {
-    lm_mat <- sapply(colnames(data_cat), function(col_cat) {
-      sapply(colnames(data_num), function(col_num) {
-        fit <- stats::lm(data[, col_num] ~ data[, col_cat])
-        r2 <- summary(fit)$r.squared
-      })
-    })
-
-    # Make lm_mat symmetrical and insert correlation/cv values in the empty
-    # parts of the matrix. This works even if r2_mat or cv_mat are empty.
-    lm_mat <- .make_symmetrical(lm_mat)
-    cor_vars <- intersect(rownames(lm_mat), rownames(r2_mat))
-    cv_vars <- intersect(rownames(lm_mat), rownames(cv_mat))
-
-    lm_mat[cor_vars, cor_vars] <- r2_mat[cor_vars, cor_vars]
-    lm_mat[cv_vars, cv_vars] <- cv_mat[cv_vars, cv_vars]
-
-    to_remove <- .get_removals(lm_mat, na_vars, R2_threshold, to_remove, always_keep)
-  }
+  to_remove <- .get_removals(r2_mat, na_vars, R2_threshold, always_keep)
 
   if (verbose) {
     print(paste("Removing", length(to_remove), "columns:",
@@ -169,17 +127,11 @@ remove_correlated_covariates <- function(data,
 #'   values), which must have row and column names. This matrix must be square.
 #' @param na_vars a one-row data.frame where the columns are the covariates and
 #'   the values are the number of `NA` values in each column.
-#' @param removed (optional) a string or character vector of variables that have
-#'   already been marked for removal. In the case where one covariate in a pair
-#'   of highly-correlated variables is in `removed` already, the other variable
-#'   will not be removed even if it would otherwise have met the criteria for
-#'   removal. Defaults to an empty vector.
 #' @inheritParams remove_correlated_covariates
 #'
 #' @return a character vector with the names of the columns that should be
 #'   removed. May also be an empty vector.
-.get_removals <- function(r2_mat, na_vars, R2_threshold = 0.5,
-                         removed = c(), always_keep = c()) {
+.get_removals <- function(r2_mat, na_vars, R2_threshold = 0.5, always_keep = c()) {
   if (!(nrow(r2_mat) == ncol(r2_mat)) ||
       !(all(rownames(r2_mat) == colnames(r2_mat))) ||
       !isSymmetric(r2_mat)) {
@@ -203,8 +155,10 @@ remove_correlated_covariates <- function(data,
     dplyr::arrange(dplyr::desc(value))
 
   if (nrow(r2_melt) == 0) {
-    return(removed)
+    return(c())
   }
+
+  removed <- c()
 
   for (R in 1:nrow(r2_melt)) {
     vars <- as.character(c(r2_melt$var1[R], r2_melt$var2[R]))
@@ -234,26 +188,4 @@ remove_correlated_covariates <- function(data,
   }
 
   return(unique(removed))
-}
-
-
-.make_symmetrical <- function(mat) {
-  new_names <- c(rownames(mat), colnames(mat))
-
-  if (length(unique(new_names)) != length(new_names)) {
-    stop("row names of `mat` are not distinct from col names")
-  }
-
-  new_mat <- matrix(NA,
-                    nrow = nrow(mat) + ncol(mat),
-                    ncol = nrow(mat) + ncol(mat),
-                    dimnames = list(new_names, new_names))
-
-  # Insert mat at the right rows and columns
-  new_mat[rownames(mat), colnames(mat)] <- mat
-
-  # Insert the transpose at the right rows and columns
-  new_mat[colnames(mat), rownames(mat)] <- t(mat)
-
-  return(new_mat)
 }

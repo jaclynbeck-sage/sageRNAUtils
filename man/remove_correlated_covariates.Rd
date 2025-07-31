@@ -24,7 +24,11 @@ for removal. Defaults to an empty vector.}
 \item{mixed_effects}{(optional) a string or character vector of columns that
 will be mixed effects in a regression model. These variables are compared
 to other categoricals for potential removal but are not compared with
-numeric variables. Defaults to an empty vector.}
+numeric variables, due to fact that mixed variables try to model any
+unwanted clustering of numeric values by group. This effect might result in
+high correlation between the mixed effect and numeric variable, but we
+don't actually want to remove one of those variables if that's the case.
+Defaults to an empty vector.}
 
 \item{always_keep}{(optional) a string or character vector of columns that
 should always be kept even if they are highly correlated with another

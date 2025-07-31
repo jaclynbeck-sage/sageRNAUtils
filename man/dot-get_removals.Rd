@@ -4,13 +4,7 @@
 \alias{.get_removals}
 \title{Get Which Variables to Remove Based on Correlation}
 \usage{
-.get_removals(
-  r2_mat,
-  na_vars,
-  R2_threshold = 0.5,
-  removed = c(),
-  always_keep = c()
-)
+.get_removals(r2_mat, na_vars, R2_threshold = 0.5, always_keep = c())
 }
 \arguments{
 \item{r2_mat}{a matrix of R^2 values (or other positive association-like
@@ -21,12 +15,6 @@ the values are the number of \code{NA} values in each column.}
 
 \item{R2_threshold}{(optional) the threshold for R^2, where variables with an
 R^2 value > \code{R2_threshold} are considered for removal. Defaults to 0.5.}
-
-\item{removed}{(optional) a string or character vector of variables that have
-already been marked for removal. In the case where one covariate in a pair
-of highly-correlated variables is in \code{removed} already, the other variable
-will not be removed even if it would otherwise have met the criteria for
-removal. Defaults to an empty vector.}
 
 \item{always_keep}{(optional) a string or character vector of columns that
 should always be kept even if they are highly correlated with another

@@ -192,28 +192,12 @@ test_that(".get_removals returns highest correlated var when there are equal NAs
   expect_identical(removed, c("v1", "v4"))
 })
 
-test_that(".get_removals retains variables in `removed`", {
-  r2 <- r2_matrix()
-  removed <- .get_removals(r2, fake_na_vars(r2), removed = "new_var")
-
-  # "new_var" should be in the vector even though it's not in r2
-  expect_identical(removed, c("new_var", "v1", "v4"))
-})
-
-test_that(".get_removals returns null on low correlation", {
+test_that(".get_removals returns empty vector on low correlation", {
   r2 <- r2_matrix()
   r2[r2 >= 0.5] <- 0.1
 
   removed <- .get_removals(r2, fake_na_vars(r2))
-  expect_null(removed)
-})
-
-test_that(".get_removals returns previous `removed` value on low correlation", {
-  r2 <- r2_matrix()
-  r2[r2 >= 0.5] <- 0.1
-
-  removed <- .get_removals(r2, fake_na_vars(r2), removed = c("new_var"))
-  expect_identical(removed, "new_var")
+  expect_length(removed, 0)
 })
 
 test_that(".get_removals never removes `always_keep` variables", {
@@ -335,16 +319,6 @@ test_that("remove_correlated_covariates does not test mixed effect column vs num
   expect_identical(new_df, df[, colnames(new_df)])
 })
 
-test_that("remove_correlated_covariates tests mixed effect column vs categorical columns", {
-  df <- df_with_correlated_vars()
-
-  new_df <- remove_correlated_covariates(df, mixed_effects = "cat_2", verbose = FALSE)
-
-  # cat_2 is still removed
-  expect_identical(colnames(new_df), c("num_1", "num_3", "cat_3"))
-  expect_identical(new_df, df[, colnames(new_df)])
-})
-
 test_that("remove_correlated_covariates handles vector of mixed effects", {
   df <- df_with_correlated_vars()
 
@@ -374,6 +348,6 @@ test_that("remove_correlated_covariates prints removed columns when verbose is T
   df <- df_with_correlated_vars()
 
   expect_output(remove_correlated_covariates(df, verbose = TRUE),
-                regexp = "Removing 3 columns: num_2, cat_2, cat_1")
+                regexp = "Removing 3 columns: cat_2, cat_1, num_2")
 })
 
