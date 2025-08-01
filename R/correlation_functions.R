@@ -27,8 +27,9 @@
 generalized_correlation <- function(data, exclude_cols = NULL) {
   data <- as.data.frame(data)
 
-  numerical_vars <- select(data, where(is.numeric), -any_of(exclude_cols))
-  categorical_vars <- select(data, !where(is.numeric), -any_of(exclude_cols))
+  numerical_vars <- dplyr::select(data, where(is.numeric), -any_of(exclude_cols))
+  categorical_vars <- dplyr::select(data, !where(is.numeric), -any_of(exclude_cols)) |>
+    dplyr::mutate(across(where(is.factor), droplevels)) # in case some levels have no data
 
   num_cor_mat <- cat_cv_mat <- lm_mat <- matrix()
 
