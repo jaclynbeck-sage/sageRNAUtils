@@ -59,18 +59,11 @@ remove_unusable_covariates <- function(data, always_keep = c(), verbose = TRUE) 
 #' in order to reduce the total correlation between variables in a regression
 #' formula. [remove_unusable_covariates()] should be run before using this
 #' function, to remove variables that are all `NA` or all the same value.
+#' Correlation is calculated using [variancePartition::canCorPairs()].
 #'
 #' @param id_cols (optional) a string or character vector of columns that should
 #'   be treated like IDs and never compared to other covariates or considered
 #'   for removal. Defaults to an empty vector.
-#' @param mixed_effects (optional) a string or character vector of columns that
-#'   will be mixed effects in a regression model. These variables are compared
-#'   to other categoricals for potential removal but are not compared with
-#'   numeric variables, due to fact that mixed variables try to model any
-#'   unwanted clustering of numeric values by group. This effect might result in
-#'   high correlation between the mixed effect and numeric variable, but we
-#'   don't actually want to remove one of those variables if that's the case.
-#'   Defaults to an empty vector.
 #' @param always_keep (optional) a string or character vector of columns that
 #'   should always be kept even if they are highly correlated with another
 #'   variable. In that case, the other variable is removed instead, as long as
@@ -89,7 +82,6 @@ remove_unusable_covariates <- function(data, always_keep = c(), verbose = TRUE) 
 #' }
 remove_correlated_covariates <- function(data,
                                          id_cols = c(),
-                                         mixed_effects = c(),
                                          always_keep = c(),
                                          R2_threshold = 0.5,
                                          verbose = TRUE) {
@@ -99,13 +91,12 @@ remove_correlated_covariates <- function(data,
   na_vars <- data |>
     summarize(across(everything(), ~sum(is.na(.x))))
 
-  cor_mat <- generalized_correlation(data, exclude_cols = id_cols)
-  r2_mat <- cor_mat^2
+  cols_analyze <- setdiff(colnames(data), id_cols)
 
-  # Remove comparison between mixed effects and numeric variables
-  numerics <- data |> select(where(is.numeric)) |> colnames()
-  r2_mat[mixed_effects, numerics] <- NA
-  r2_mat[numerics, mixed_effects] <- NA
+  form <- paste("~", paste(cols_analyze, collapse = " + "))
+
+  cor_mat <- variancePartition::canCorPairs(form, data, showWarnings = FALSE)
+  r2_mat <- cor_mat^2
 
   to_remove <- .get_removals(r2_mat, na_vars, R2_threshold, always_keep)
 

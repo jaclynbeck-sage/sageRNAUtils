@@ -7,7 +7,6 @@
 remove_correlated_covariates(
   data,
   id_cols = c(),
-  mixed_effects = c(),
   always_keep = c(),
   R2_threshold = 0.5,
   verbose = TRUE
@@ -20,15 +19,6 @@ rows are samples and columns are covariates}
 \item{id_cols}{(optional) a string or character vector of columns that should
 be treated like IDs and never compared to other covariates or considered
 for removal. Defaults to an empty vector.}
-
-\item{mixed_effects}{(optional) a string or character vector of columns that
-will be mixed effects in a regression model. These variables are compared
-to other categoricals for potential removal but are not compared with
-numeric variables, due to fact that mixed variables try to model any
-unwanted clustering of numeric values by group. This effect might result in
-high correlation between the mixed effect and numeric variable, but we
-don't actually want to remove one of those variables if that's the case.
-Defaults to an empty vector.}
 
 \item{always_keep}{(optional) a string or character vector of columns that
 should always be kept even if they are highly correlated with another
@@ -51,6 +41,7 @@ removes at least one covariate from all pairs of highly-correlated covariates
 in order to reduce the total correlation between variables in a regression
 formula. \code{\link[=remove_unusable_covariates]{remove_unusable_covariates()}} should be run before using this
 function, to remove variables that are all \code{NA} or all the same value.
+Correlation is calculated using \code{\link[variancePartition:canCorPairs]{variancePartition::canCorPairs()}}.
 }
 \examples{
 \dontrun{

@@ -308,27 +308,6 @@ test_that("remove_correlated_covariates handles a vector of `always_keep` variab
   expect_identical(new_df, df)
 })
 
-test_that("remove_correlated_covariates does not test mixed effect column vs numeric column", {
-  df <- df_with_correlated_vars()
-
-  new_df <- remove_correlated_covariates(df, mixed_effects = "cat_1", verbose = FALSE)
-
-  # cat_1 would get removed if it wasn't a mixed effect, but it shouldn't get
-  # removed here
-  expect_identical(colnames(new_df), c("num_1", "num_3", "cat_1", "cat_3"))
-  expect_identical(new_df, df[, colnames(new_df)])
-})
-
-test_that("remove_correlated_covariates handles vector of mixed effects", {
-  df <- df_with_correlated_vars()
-
-  new_df <- remove_correlated_covariates(df, mixed_effects = c("cat_1", "cat_2"), verbose = FALSE)
-
-  # cat_2 is still removed, cat_1 should stay
-  expect_identical(colnames(new_df), c("num_1", "num_3", "cat_1", "cat_3"))
-  expect_identical(new_df, df[, colnames(new_df)])
-})
-
 test_that("remove_correlated_covariates uses different R^2 threshold", {
   df <- df_with_correlated_vars()
 

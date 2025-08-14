@@ -1,6 +1,6 @@
 Package: sageRNAUtils
 Title: Utility Functions for RNA Seq Processing
-Version: 0.0.0.9400
+Version: 0.0.0.9500
 Authors@R: 
     person("Jaclyn", "Beck", , "jaclyn.beck@sagebase.org", role = c("aut", "cre"))
 Description: This package contains generic functions that are commonly used across several RNA seq analysis pipelines at Sage Bionetworks. 
@@ -29,5 +29,6 @@ Suggests:
     fastqcr,
     GenomicRanges,
     rtracklayer,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    variancePartition
 Config/testthat/edition: 3
