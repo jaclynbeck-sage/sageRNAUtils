@@ -336,7 +336,7 @@ load_multiqc_json <- function(files) {
   cutadapt_stats <- data$multiqc_cutadapt |>
     reformat_stats(prefix = "cutadapt", cols_keep = percent_trimmed)
 
-  if (length(unique(cutadapt_stats$specimenID)) == 2 * nrow(cutadapt_stats)) {
+  if (all(grepl("_(1|2)", cutadapt_stats$specimenID))) {
     cutadapt_stats <- cutadapt_stats |>
       dplyr::mutate(read = ifelse(grepl("_1$", specimenID), "R1", "R2"),
                     specimenID = stringr::str_replace(specimenID, "_(1|2)$", "")) |>
