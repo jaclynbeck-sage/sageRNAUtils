@@ -28,6 +28,9 @@ Suggests:
     edgeR,
     fastqcr,
     GenomicRanges,
+    jsonlite,
+    purrr,
+    readr,
     rtracklayer,
     testthat (>= 3.0.0),
     variancePartition

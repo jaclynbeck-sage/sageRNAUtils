@@ -225,6 +225,158 @@ load_fastqc_output <- function(files, sample_names, ...) {
 }
 
 
+#' Load MultiQC JSON file
+#'
+#' Loads stats from a MultiQC JSON file and merges them all into one data frame.
+#'
+#' NOTE: This function has not been thoroughly tested.
+#'
+#' @param files a single path to a file or a vector or list of paths, which can
+#'   be relative or absolute paths
+#'
+#' @return a data.frame with fields from the following metrics: picard, rsem,
+#' samtools, samtools idx, cutadapt. If multiple JSON files were supplied, all
+#' data will be concatenated into one data.frame.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # One file
+#' stats_df <- load_multiqc_json("data/multiqc_data.json")
+#'
+#' # Multiple files
+#' stats_df <- load_multiqc_json(
+#'   c("data/multiqc_data_1.json", "data/multiqc_data_2.json", "data/multiqc_data_3.json")
+#' )
+#' }
+load_multiqc_json <- function(files) {
+  data <- lapply(files, function(js_file) {
+    js_txt <- readr::read_file(js_file)
+    js_txt <- stringr::str_replace_all(js_txt, "NaN", stringr::str_escape('"NaN"'))
+    js <- jsonlite::fromJSON(js_txt, simplifyVector = FALSE)
+
+    # Remove general stats -- it's a mix of sample-level and fastqc read-level
+    # data that doesn't merge together
+    keep <- !grepl("multiqc_general_stats", names(js$report_saved_raw_data))
+    js$report_saved_raw_data <- js$report_saved_raw_data[keep]
+
+    lapply(js$report_saved_raw_data, function(item) {
+      do.call(rbind, item)
+    })
+  })
+
+  # Check for duplicate samples
+  samps <- lapply(data, "[[", "multiqc_rsem") |>
+    lapply(rownames) |>
+    unlist()
+
+  stopifnot(all(table(samps) == 1))
+
+  # Merge the lists. Using sapply instead of lapply so it keeps the names
+  data <- sapply(names(data[[1]]), function(item_name) {
+    do.call(rbind, lapply(data, "[[", item_name))
+  })
+
+  # Helper function to convert items from "data", which are matrices, to
+  # data frames with only the specified columns. Rownames are moved to a new
+  # "specimenID" column and the specified prefix is added to the other column
+  # names
+  reformat_stats <- function(df, prefix, cols_keep) {
+    df |>
+      as.data.frame() |>
+      dplyr::select({{cols_keep}}) |>
+      # Add prefix to column names
+      dplyr::rename_with(~ paste0(prefix, "_", .x), dplyr::everything()) |>
+      # All columns are actually named lists, unlist them
+      dplyr::mutate(dplyr::across(dplyr::everything(), ~unlist(.x))) |>
+      # Make specimenID column
+      tibble::rownames_to_column("specimenID") |>
+      dplyr::mutate(specimenID = make.names(specimenID))
+  }
+
+  # TODO decide on:
+  # multiqc_samtools_flagstat: ??
+  # multiqc_fastqc: %GC, total_deduplicated_percentage <-- identical to fastqc data, but phred and base content not available
+
+  picard_stats <- data$multiqc_picard_dups |>
+    reformat_stats(prefix = "picard", cols_keep = PERCENT_DUPLICATION) |>
+    dplyr::mutate(picard_PERCENT_DUPLICATION = picard_PERCENT_DUPLICATION * 100)
+
+  rsem_stats <- data$multiqc_rsem |>
+    reformat_stats(prefix = "rsem",
+                   cols_keep = c(alignable_percent, Unique, Total)) |>
+    dplyr::mutate(
+      rsem_uniquely_aligned_percent = rsem_Unique / rsem_Total * 100
+    ) |>
+    dplyr::select(-rsem_Unique, -rsem_Total)
+
+  samtools_stats <- data$multiqc_samtools_stats |>
+    reformat_stats(
+      prefix = "samtools",
+      cols_keep = c(average_quality, insert_size_average, reads_mapped_percent,
+                    reads_duplicated_percent, reads_MQ0_percent,
+                    reads_QC_failed_percent)
+    )
+
+  # Each item in idxstats is a list with 2 numbers. The first number is the
+  # number of reads mapped to the chromosome, the second number is the length
+  # of the chromosome. We want the first number for X and Y
+  xy_stats <- apply(data$multiqc_samtools_idxstats, 1, function(row) {
+    c(chrX = row[["chrX"]][[1]], chrY = row[["chrY"]][[1]])
+  }) |>
+    t() |>
+    reformat_stats(prefix = "samtools", cols_keep = c(chrX, chrY)) |>
+    dplyr::mutate(total = samtools_chrX + samtools_chrY,
+                  samtools_percent_mapped_X = samtools_chrX / total * 100,
+                  samtools_percent_mapped_Y = samtools_chrY / total * 100) |>
+    dplyr::select(-total, -samtools_chrX, -samtools_chrY)
+
+  # This matrix may have separate rows for read 1 and read 2, which need to be
+  # combined into a single row.
+  cutadapt_stats <- data$multiqc_cutadapt |>
+    reformat_stats(prefix = "cutadapt", cols_keep = percent_trimmed)
+
+  if (length(unique(cutadapt_stats$specimenID)) == 2 * nrow(cutadapt_stats)) {
+    cutadapt_stats <- cutadapt_stats |>
+      dplyr::mutate(read = ifelse(grepl("_1$", specimenID), "R1", "R2"),
+                    specimenID = stringr::str_replace(specimenID, "_(1|2)$", "")) |>
+      tidyr::pivot_wider(names_from = "read",
+                         values_from = "cutadapt_percent_trimmed") |>
+      dplyr::rename(cutadapt_percent_trimmed_R1 = R1,
+                    cutadapt_percent_trimmed_R2 = R2) |>
+      dplyr::mutate(
+        cutadapt_mean_percent_trimmed = (cutadapt_percent_trimmed_R1 +
+                                           cutadapt_percent_trimmed_R2) / 2
+    )
+  }
+
+  technical_stats <- purrr::reduce(
+    list(picard_stats, rsem_stats, samtools_stats, xy_stats, cutadapt_stats),
+    dplyr::full_join
+  )
+
+  if (any(is.na(technical_stats))) {
+    warning("NA values exist in technical stats data frame.")
+  }
+
+  return(technical_stats)
+
+  # Possible QC metrics:
+  # FastQC -
+  #   median PHRED
+  #   base content at each position
+  # RSeqC -
+  #   reads explained by first strand
+  #   percent mapped reads
+  #   number of reads mapped to genes
+  #   percent reads mapped to junctions
+  #   percent reads mapped to genes
+  #   insert size inner distance
+  #   percent known junctions
+  #   80/20 ratio of gene body coverage
+}
+
+
 #' Find Outliers by PCA, Split by Group
 #'
 #' Finds outliers via PCA, but splits the data into groups and runs PCA outlier
@@ -346,7 +498,6 @@ find_pca_outliers_by_group <- function(data, pca_group,
 #'   `shape = "diagnosis"` or `size = "quantity"`.
 #'
 #' @return a [ggplot2::ggplot] object with the built plot.
-#' @export
 #'
 #' @examples
 #' \dontrun{
